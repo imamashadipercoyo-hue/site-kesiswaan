@@ -9,7 +9,14 @@ import {
   SchoolProfileData,
   AdminUser,
   AuditLog,
-  PasswordResetToken
+  PasswordResetToken,
+  OsisMpkData,
+  OsisSekbid,
+  OsisProker,
+  PilketosStage,
+  AnnualWorkProgram,
+  StaffMember,
+  PublicDocumentItem
 } from '../types';
 import {
   INITIAL_SCHOOL_PROFILE,
@@ -19,11 +26,12 @@ import {
   INITIAL_EXTRACURRICULARS,
   INITIAL_GALLERY,
   INITIAL_ASPIRATIONS,
-  INITIAL_CONTACT_MESSAGES
+  INITIAL_CONTACT_MESSAGES,
+  INITIAL_OSIS_MPK
 } from '../data/initialData';
 
 const KEYS = {
-  PROFILE: 'smesa_profile_v1',
+  PROFILE: 'smesa_profile_v2',
   NEWS: 'smesa_news_v1',
   AGENDA: 'smesa_agenda_v1',
   ACHIEVEMENTS: 'smesa_achievements_v1',
@@ -34,7 +42,8 @@ const KEYS = {
   AUDIT_LOGS: 'smesa_audit_logs_v1',
   CURRENT_ADMIN: 'smesa_current_admin_v1',
   ADMIN_ACCOUNTS: 'smesa_admin_accounts_v2',
-  RESET_TOKENS: 'smesa_reset_tokens_v1'
+  RESET_TOKENS: 'smesa_reset_tokens_v1',
+  OSIS_MPK: 'smesa_osis_mpk_v1'
 };
 
 export const DEFAULT_ADMINS: AdminUser[] = [
@@ -115,6 +124,121 @@ export const StorageService = {
     saveToStorage(KEYS.PROFILE, updated);
     this.addAuditLog('Perbarui Profil Kesiswaan', 'Profil & Sambutan', adminName, 'Memperbarui data sambutan/visi/budaya kesiswaan');
     return updated;
+  },
+
+  // Annual Programs Management (Edit & Tambah Program Kerja Kesiswaan)
+  saveAnnualProgram(item: Omit<AnnualWorkProgram, 'id'> & { id?: string }, adminName: string): AnnualWorkProgram {
+    const profile = this.getProfile();
+    const programs = profile.annualPrograms ? [...profile.annualPrograms] : [];
+
+    if (item.id) {
+      const idx = programs.findIndex(p => p.id === item.id);
+      if (idx !== -1) {
+        programs[idx] = { ...programs[idx], ...item } as AnnualWorkProgram;
+        profile.annualPrograms = programs;
+        saveToStorage(KEYS.PROFILE, profile);
+        this.addAuditLog('Edit Program Kerja', 'Profil Kesiswaan', adminName, `Memperbarui program "${item.title}"`);
+        return programs[idx];
+      }
+    }
+
+    const newProg: AnnualWorkProgram = {
+      ...item,
+      id: `pro-${Date.now()}`
+    };
+    programs.push(newProg);
+    profile.annualPrograms = programs;
+    saveToStorage(KEYS.PROFILE, profile);
+    this.addAuditLog('Tambah Program Kerja', 'Profil Kesiswaan', adminName, `Menambahkan program kerja baru "${item.title}"`);
+    return newProg;
+  },
+
+  deleteAnnualProgram(id: string, adminName: string): void {
+    const profile = this.getProfile();
+    if (!profile.annualPrograms) return;
+    const target = profile.annualPrograms.find(p => p.id === id);
+    profile.annualPrograms = profile.annualPrograms.filter(p => p.id !== id);
+    saveToStorage(KEYS.PROFILE, profile);
+    if (target) {
+      this.addAuditLog('Hapus Program Kerja', 'Profil Kesiswaan', adminName, `Menghapus program "${target.title}"`);
+    }
+  },
+
+  // Staff Members Management (Edit & Tambah Struktur Kesiswaan)
+  saveStaffMember(item: Omit<StaffMember, 'id'> & { id?: string }, adminName: string): StaffMember {
+    const profile = this.getProfile();
+    const staff = profile.organizationalStructure ? [...profile.organizationalStructure] : [];
+
+    if (item.id) {
+      const idx = staff.findIndex(s => s.id === item.id);
+      if (idx !== -1) {
+        staff[idx] = { ...staff[idx], ...item } as StaffMember;
+        profile.organizationalStructure = staff;
+        saveToStorage(KEYS.PROFILE, profile);
+        this.addAuditLog('Edit Struktur Kesiswaan', 'Profil Kesiswaan', adminName, `Memperbarui anggota "${item.name}"`);
+        return staff[idx];
+      }
+    }
+
+    const newStaff: StaffMember = {
+      ...item,
+      id: `stf-${Date.now()}`,
+      avatar: item.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop'
+    };
+    staff.push(newStaff);
+    profile.organizationalStructure = staff;
+    saveToStorage(KEYS.PROFILE, profile);
+    this.addAuditLog('Tambah Struktur Kesiswaan', 'Profil Kesiswaan', adminName, `Menambahkan staf "${item.name}" (${item.title})`);
+    return newStaff;
+  },
+
+  deleteStaffMember(id: string, adminName: string): void {
+    const profile = this.getProfile();
+    if (!profile.organizationalStructure) return;
+    const target = profile.organizationalStructure.find(s => s.id === id);
+    profile.organizationalStructure = profile.organizationalStructure.filter(s => s.id !== id);
+    saveToStorage(KEYS.PROFILE, profile);
+    if (target) {
+      this.addAuditLog('Hapus Struktur Kesiswaan', 'Profil Kesiswaan', adminName, `Menghapus staf "${target.name}"`);
+    }
+  },
+
+  // Public Documents Management (Edit & Tambah Dokumen Unduhan)
+  savePublicDocument(item: Omit<PublicDocumentItem, 'id'> & { id?: string }, adminName: string): PublicDocumentItem {
+    const profile = this.getProfile();
+    const docs = profile.publicDocuments ? [...profile.publicDocuments] : [];
+
+    if (item.id) {
+      const idx = docs.findIndex(d => d.id === item.id);
+      if (idx !== -1) {
+        docs[idx] = { ...docs[idx], ...item } as PublicDocumentItem;
+        profile.publicDocuments = docs;
+        saveToStorage(KEYS.PROFILE, profile);
+        this.addAuditLog('Edit Dokumen Publik', 'Profil Kesiswaan', adminName, `Memperbarui dokumen "${item.title}"`);
+        return docs[idx];
+      }
+    }
+
+    const newDoc: PublicDocumentItem = {
+      ...item,
+      id: `doc-${Date.now()}`
+    };
+    docs.push(newDoc);
+    profile.publicDocuments = docs;
+    saveToStorage(KEYS.PROFILE, profile);
+    this.addAuditLog('Tambah Dokumen Publik', 'Profil Kesiswaan', adminName, `Menambahkan dokumen baru "${item.title}"`);
+    return newDoc;
+  },
+
+  deletePublicDocument(id: string, adminName: string): void {
+    const profile = this.getProfile();
+    if (!profile.publicDocuments) return;
+    const target = profile.publicDocuments.find(d => d.id === id);
+    profile.publicDocuments = profile.publicDocuments.filter(d => d.id !== id);
+    saveToStorage(KEYS.PROFILE, profile);
+    if (target) {
+      this.addAuditLog('Hapus Dokumen Publik', 'Profil Kesiswaan', adminName, `Menghapus dokumen "${target.title}"`);
+    }
   },
 
   // --- News ---
@@ -356,6 +480,127 @@ export const StorageService = {
       all[idx].status = status;
       all[idx].isRead = true;
       saveToStorage(KEYS.CONTACTS, all);
+    }
+  },
+
+  // --- OSIS & MPK Management (Edit & Tambah Program, Sekbid, Tahapan) ---
+  getOsisMpk(): OsisMpkData {
+    return getFromStorage<OsisMpkData>(KEYS.OSIS_MPK, INITIAL_OSIS_MPK);
+  },
+
+  updateOsisMpk(data: Partial<OsisMpkData>, adminName: string): OsisMpkData {
+    const current = this.getOsisMpk();
+    const updated = { ...current, ...data };
+    saveToStorage(KEYS.OSIS_MPK, updated);
+    this.addAuditLog('Perbarui Data OSIS-MPK', 'OSIS & MPK', adminName, 'Memperbarui visi, kepengurusan, atau informasi umum OSIS/MPK');
+    return updated;
+  },
+
+  saveOsisSekbid(item: Omit<OsisSekbid, 'id'> & { id?: string }, adminName: string): OsisSekbid {
+    const osis = this.getOsisMpk();
+    const sekbids = [...osis.sekbids];
+
+    if (item.id) {
+      const idx = sekbids.findIndex(s => s.id === item.id);
+      if (idx !== -1) {
+        sekbids[idx] = { ...sekbids[idx], ...item } as OsisSekbid;
+        osis.sekbids = sekbids;
+        saveToStorage(KEYS.OSIS_MPK, osis);
+        this.addAuditLog('Edit Sekbid OSIS', 'OSIS & MPK', adminName, `Memperbarui ${item.num}: ${item.title}`);
+        return sekbids[idx];
+      }
+    }
+
+    const newSekbid: OsisSekbid = {
+      ...item,
+      id: `sek-${Date.now()}`
+    };
+    sekbids.push(newSekbid);
+    osis.sekbids = sekbids;
+    saveToStorage(KEYS.OSIS_MPK, osis);
+    this.addAuditLog('Tambah Sekbid OSIS', 'OSIS & MPK', adminName, `Menambahkan divisi ${item.num}: ${item.title}`);
+    return newSekbid;
+  },
+
+  deleteOsisSekbid(id: string, adminName: string): void {
+    const osis = this.getOsisMpk();
+    const target = osis.sekbids.find(s => s.id === id);
+    osis.sekbids = osis.sekbids.filter(s => s.id !== id);
+    saveToStorage(KEYS.OSIS_MPK, osis);
+    if (target) {
+      this.addAuditLog('Hapus Sekbid OSIS', 'OSIS & MPK', adminName, `Menghapus divisi ${target.num}: ${target.title}`);
+    }
+  },
+
+  saveOsisProker(item: Omit<OsisProker, 'id'> & { id?: string }, adminName: string): OsisProker {
+    const osis = this.getOsisMpk();
+    const prokers = [...osis.prokers];
+
+    if (item.id) {
+      const idx = prokers.findIndex(p => p.id === item.id);
+      if (idx !== -1) {
+        prokers[idx] = { ...prokers[idx], ...item } as OsisProker;
+        osis.prokers = prokers;
+        saveToStorage(KEYS.OSIS_MPK, osis);
+        this.addAuditLog('Edit Proker OSIS', 'OSIS & MPK', adminName, `Memperbarui proker "${item.name}"`);
+        return prokers[idx];
+      }
+    }
+
+    const newProk: OsisProker = {
+      ...item,
+      id: `prok-${Date.now()}`
+    };
+    prokers.push(newProk);
+    osis.prokers = prokers;
+    saveToStorage(KEYS.OSIS_MPK, osis);
+    this.addAuditLog('Tambah Proker OSIS', 'OSIS & MPK', adminName, `Menambahkan program kerja baru "${item.name}"`);
+    return newProk;
+  },
+
+  deleteOsisProker(id: string, adminName: string): void {
+    const osis = this.getOsisMpk();
+    const target = osis.prokers.find(p => p.id === id);
+    osis.prokers = osis.prokers.filter(p => p.id !== id);
+    saveToStorage(KEYS.OSIS_MPK, osis);
+    if (target) {
+      this.addAuditLog('Hapus Proker OSIS', 'OSIS & MPK', adminName, `Menghapus proker "${target.name}"`);
+    }
+  },
+
+  savePilketosStage(item: Omit<PilketosStage, 'id'> & { id?: string }, adminName: string): PilketosStage {
+    const osis = this.getOsisMpk();
+    const stages = [...osis.pilketosStages];
+
+    if (item.id) {
+      const idx = stages.findIndex(s => s.id === item.id);
+      if (idx !== -1) {
+        stages[idx] = { ...stages[idx], ...item } as PilketosStage;
+        osis.pilketosStages = stages;
+        saveToStorage(KEYS.OSIS_MPK, osis);
+        this.addAuditLog('Edit Tahapan Pilketos', 'OSIS & MPK', adminName, `Memperbarui tahapan "${item.stage}"`);
+        return stages[idx];
+      }
+    }
+
+    const newStage: PilketosStage = {
+      ...item,
+      id: `stg-${Date.now()}`
+    };
+    stages.push(newStage);
+    osis.pilketosStages = stages;
+    saveToStorage(KEYS.OSIS_MPK, osis);
+    this.addAuditLog('Tambah Tahapan Pilketos', 'OSIS & MPK', adminName, `Menambahkan tahapan Pilketos "${item.stage}"`);
+    return newStage;
+  },
+
+  deletePilketosStage(id: string, adminName: string): void {
+    const osis = this.getOsisMpk();
+    const target = osis.pilketosStages.find(s => s.id === id);
+    osis.pilketosStages = osis.pilketosStages.filter(s => s.id !== id);
+    saveToStorage(KEYS.OSIS_MPK, osis);
+    if (target) {
+      this.addAuditLog('Hapus Tahapan Pilketos', 'OSIS & MPK', adminName, `Menghapus tahapan "${target.stage}"`);
     }
   },
 
@@ -637,5 +882,6 @@ export const StorageService = {
     saveToStorage(KEYS.ASPIRATIONS, INITIAL_ASPIRATIONS);
     saveToStorage(KEYS.CONTACTS, INITIAL_CONTACT_MESSAGES);
     saveToStorage(KEYS.ADMIN_ACCOUNTS, DEFAULT_ADMINS);
+    saveToStorage(KEYS.OSIS_MPK, INITIAL_OSIS_MPK);
   }
 };

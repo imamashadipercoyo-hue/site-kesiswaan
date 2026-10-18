@@ -199,6 +199,35 @@ export interface AuditLog {
   details: string;
 }
 
+export interface AnnualWorkProgram {
+  id: string;
+  title: string;
+  category: string;
+  period: string;
+  target: string;
+  description: string;
+  status: 'terencana' | 'berjalan' | 'selesai';
+}
+
+export interface StaffMember {
+  id: string;
+  title: string;
+  name: string;
+  role: string;
+  avatar: string;
+  desc: string;
+}
+
+export interface PublicDocumentItem {
+  id: string;
+  title: string;
+  category: string;
+  format: string;
+  size: string;
+  updated: string;
+  url?: string;
+}
+
 export interface SchoolProfileData {
   schoolName: string;
   tagline: string;
@@ -214,4 +243,63 @@ export interface SchoolProfileData {
     points: string[];
   };
   runningAnnouncement: string;
+  overview?: string;
+  rolesAndFunctions?: string[];
+  annualPrograms?: AnnualWorkProgram[];
+  organizationalStructure?: StaffMember[];
+  publicDocuments?: PublicDocumentItem[];
 }
+
+export interface OsisSekbid {
+  id: string;
+  num: string;
+  title: string;
+  coordinator?: string;
+  desc: string;
+}
+
+export interface OsisProker {
+  id: string;
+  name: string;
+  division: string;
+  month: string;
+  status: 'terencana' | 'berjalan' | 'terlaksana';
+  desc: string;
+}
+
+export interface MpkCommission {
+  id: string;
+  name: string;
+  focus: string;
+  members: string;
+}
+
+export interface PilketosStage {
+  id: string;
+  stage: string;
+  date: string;
+  status: 'selesai' | 'berlangsung' | 'akan_datang';
+  desc: string;
+}
+
+export interface OsisMpkData {
+  osisVision: string;
+  osisMissions: string[];
+  osisDescription: string;
+  osisPeriod: string;
+  cabinetName: string;
+  chiefName: string;
+  chiefClass: string;
+  chiefAvatar: string;
+  viceChiefName: string;
+  viceChiefClass: string;
+  viceChiefAvatar: string;
+  sekbids: OsisSekbid[];
+  prokers: OsisProker[];
+  mpkDescription: string;
+  mpkChiefName: string;
+  mpkChiefClass: string;
+  mpkCommissions: MpkCommission[];
+  pilketosStages: PilketosStage[];
+}
+

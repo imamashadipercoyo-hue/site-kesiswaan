@@ -174,6 +174,9 @@ export default function App() {
           <ProfilePage
             profile={profile}
             onNavigate={handleNavigate}
+            currentAdmin={currentAdmin}
+            onOpenLoginModal={() => setShowAdminLoginModal(true)}
+            onDataChanged={refreshData}
           />
         )}
 
@@ -205,6 +208,9 @@ export default function App() {
           <OsisMpkPage
             aspirations={aspirations}
             onAspirationSubmitted={refreshData}
+            currentAdmin={currentAdmin}
+            onOpenLoginModal={() => setShowAdminLoginModal(true)}
+            onDataChanged={refreshData}
           />
         )}
 
@@ -219,6 +225,9 @@ export default function App() {
         {currentTab === 'galeri' && (
           <GalleryPage
             gallery={gallery}
+            currentAdmin={currentAdmin}
+            onOpenLoginModal={() => setShowAdminLoginModal(true)}
+            onDataChanged={refreshData}
           />
         )}
 

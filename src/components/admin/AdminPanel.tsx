@@ -28,7 +28,12 @@ import {
   RefreshCw,
   Archive,
   History,
-  UserCheck
+  UserCheck,
+  FileText,
+  Building2,
+  Download,
+  UserPlus,
+  BookOpen
 } from 'lucide-react';
 import { SchoolLogo } from '../common/SchoolLogo';
 import { 
@@ -41,7 +46,12 @@ import {
   StudentAspiration, 
   ContactMessage, 
   SchoolProfileData,
-  AuditLog
+  AuditLog,
+  OsisProker,
+  OsisSekbid,
+  AnnualWorkProgram,
+  StaffMember,
+  PublicDocumentItem
 } from '../../types';
 import { StorageService, DEFAULT_ADMINS } from '../../services/storageService';
 
@@ -67,6 +77,7 @@ type AdminTab =
   | 'prestasi'
   | 'ekstra'
   | 'galeri'
+  | 'osis'
   | 'aspirasi'
   | 'kontak'
   | 'users'
@@ -90,9 +101,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
-  // Profile Form States
+  // Profile Form States & Sub-tab
+  const [profileSubTab, setProfileSubTab] = useState<'gambaran' | 'programs' | 'struktur' | 'dokumen'>('gambaran');
+  const [wakaNameInput, setWakaNameInput] = useState(profile.wakaName);
+  const [wakaTitleInput, setWakaTitleInput] = useState(profile.wakaTitle);
+  const [wakaPhotoInput, setWakaPhotoInput] = useState(profile.wakaPhoto);
   const [wakaGreeting, setWakaGreeting] = useState(profile.wakaGreeting);
   const [runningAnnouncement, setRunningAnnouncement] = useState(profile.runningAnnouncement);
+  const [profileOverview, setProfileOverview] = useState(profile.overview || 'Bidang Kesiswaan SMK Negeri 1 Jember merupakan unit kerja strategis di bawah kepemimpinan Kepala Sekolah yang secara khusus bertugas merancang, mengawal, dan mengevaluasi seluruh kebijakan pembinaan peserta didik selama menempuh pendidikan di SMESA.');
+  const [profileRolesText, setProfileRolesText] = useState((profile.rolesAndFunctions || [
+    'Pembinaan Karakter & Budi Pekerti: Menerapkan pembiasaan 5S, kedisiplinan berkeadilan, dan nilai Profil Pelajar Pancasila.',
+    'Pengawalan Organisasi Siswa: Membina kemandirian fungsionaris OSIS, MPK, dan kepanitiaan kegiatan siswa.',
+    'Pengembangan 22 Ekstrakurikuler: Memfasilitasi sarana latihan, regenerasi anggota, dan kompetisi unjuk karya.',
+    'Akselerasi Prestasi Lomba (SMESA JUARA): Membina kontingen kompetisi kejuruan LKS, O2SN, FLS2N, hingga level nasional.',
+    'Perlindungan Siswa & Lingkungan Aman: Mencegah tindak kekerasan, perundungan siber, dan menciptakan rasa aman inklusif.'
+  ]).join('\n'));
+  const [profileVision, setProfileVision] = useState(profile.vision);
+  const [profileMissionsText, setProfileMissionsText] = useState(profile.missions.join('\n'));
+  const [disciplinePointsInput, setDisciplinePointsInput] = useState(profile.disciplineCulture.points.join('\n'));
+
+  // Annual Programs State in AdminPanel
+  const [editingAnnualProgram, setEditingAnnualProgram] = useState<Partial<AnnualWorkProgram> | null>(null);
+  const [showAnnualProgramModal, setShowAnnualProgramModal] = useState(false);
+
+  // Staff State in AdminPanel
+  const [editingStaffMember, setEditingStaffMember] = useState<Partial<StaffMember> | null>(null);
+  const [showStaffMemberModal, setShowStaffMemberModal] = useState(false);
+
+  // Document State in AdminPanel
+  const [editingPublicDoc, setEditingPublicDoc] = useState<Partial<PublicDocumentItem> | null>(null);
+  const [showPublicDocModal, setShowPublicDocModal] = useState(false);
 
   // User Accounts State (Tim Kesiswaan, Administrator)
   const [adminAccounts, setAdminAccounts] = useState<AdminUser[]>(() => StorageService.getAdminAccounts());
@@ -118,6 +156,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editingAchievement, setEditingAchievement] = useState<Partial<AchievementItem> | null>(null);
   const [showAchievementModal, setShowAchievementModal] = useState(false);
 
+  // Gallery Modal / Form States
+  const [editingGallery, setEditingGallery] = useState<Partial<GalleryItem> | null>(null);
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+
+  // OSIS Management States
+  const [osisData, setOsisData] = useState(() => StorageService.getOsisMpk());
+  const [editingOsisProker, setEditingOsisProker] = useState<Partial<OsisProker> | null>(null);
+  const [showOsisProkerModal, setShowOsisProkerModal] = useState(false);
+  const [editingOsisSekbid, setEditingOsisSekbid] = useState<Partial<OsisSekbid> | null>(null);
+  const [showOsisSekbidModal, setShowOsisSekbidModal] = useState(false);
+
   // Aspiration response modal
   const [moderatingAsp, setModeratingAsp] = useState<StudentAspiration | null>(null);
   const [aspResponseText, setAspResponseText] = useState('');
@@ -130,19 +179,201 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setTimeout(() => setFeedbackMsg(null), 3500);
   };
 
-  // Profile save
-  const handleSaveProfile = (e: React.FormEvent) => {
+  // Profile General Save (Gambaran Umum, Peran, Visi Misi, Sambutan)
+  const handleSaveGeneralProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isSuperAdmin) {
-      alert('Hanya Super Admin yang diizinkan memperbarui profil kesiswaan.');
-      return;
-    }
+    const updatedRoles = profileRolesText.split('\n').map(r => r.trim()).filter(Boolean);
+    const updatedMissions = profileMissionsText.split('\n').map(m => m.trim()).filter(Boolean);
+    const updatedPoints = disciplinePointsInput.split('\n').map(p => p.trim()).filter(Boolean);
+
     StorageService.updateProfile({
+      overview: profileOverview,
+      rolesAndFunctions: updatedRoles.length > 0 ? updatedRoles : profile.rolesAndFunctions,
+      vision: profileVision,
+      missions: updatedMissions.length > 0 ? updatedMissions : profile.missions,
+      wakaName: wakaNameInput,
+      wakaTitle: wakaTitleInput,
+      wakaPhoto: wakaPhotoInput,
       wakaGreeting,
-      runningAnnouncement
+      runningAnnouncement,
+      disciplineCulture: {
+        ...profile.disciplineCulture,
+        points: updatedPoints.length > 0 ? updatedPoints : profile.disciplineCulture.points
+      }
     }, currentAdmin.name);
+
     onDataChanged();
-    showFeedback('Pengaturan profil dan pengumuman kesiswaan berhasil diperbarui.');
+    showFeedback('Konten Profil, Gambaran Umum, Peran Kesiswaan, Visi Misi, dan Sambutan berhasil diperbarui.');
+  };
+
+  // Annual Programs handlers in AdminPanel
+  const handleSaveAnnualProg = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAnnualProgram || !editingAnnualProgram.title) return;
+    StorageService.saveAnnualProgram({
+      id: editingAnnualProgram.id,
+      title: editingAnnualProgram.title,
+      category: editingAnnualProgram.category || 'Program Kerja Kesiswaan',
+      period: editingAnnualProgram.period || 'Tahun 2026/2027',
+      target: editingAnnualProgram.target || 'Seluruh Siswa SMESA',
+      description: editingAnnualProgram.description || '',
+      status: editingAnnualProgram.status || 'terencana'
+    }, currentAdmin.name);
+    setShowAnnualProgramModal(false);
+    setEditingAnnualProgram(null);
+    onDataChanged();
+    showFeedback('Program kerja tahunan kesiswaan berhasil disimpan.');
+  };
+
+  const handleDeleteAnnualProg = (id: string, title: string) => {
+    if (confirm(`Hapus program kerja "${title}"?`)) {
+      StorageService.deleteAnnualProgram(id, currentAdmin.name);
+      onDataChanged();
+      showFeedback('Program kerja tahunan berhasil dihapus.');
+    }
+  };
+
+  // Staff handlers in AdminPanel
+  const handleSaveStaffMem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStaffMember || !editingStaffMember.name || !editingStaffMember.title) return;
+    StorageService.saveStaffMember({
+      id: editingStaffMember.id,
+      name: editingStaffMember.name,
+      title: editingStaffMember.title,
+      role: editingStaffMember.role || 'Staf Kesiswaan',
+      desc: editingStaffMember.desc || '',
+      avatar: editingStaffMember.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop'
+    }, currentAdmin.name);
+    setShowStaffMemberModal(false);
+    setEditingStaffMember(null);
+    onDataChanged();
+    showFeedback('Anggota struktur kesiswaan berhasil disimpan.');
+  };
+
+  const handleDeleteStaffMem = (id: string, name: string) => {
+    if (confirm(`Hapus anggota struktur "${name}"?`)) {
+      StorageService.deleteStaffMember(id, currentAdmin.name);
+      onDataChanged();
+      showFeedback('Anggota struktur kesiswaan berhasil dihapus.');
+    }
+  };
+
+  // Document handlers in AdminPanel
+  const handleSavePubDoc = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPublicDoc || !editingPublicDoc.title) return;
+    StorageService.savePublicDocument({
+      id: editingPublicDoc.id,
+      title: editingPublicDoc.title,
+      category: editingPublicDoc.category || 'Dokumen Kesiswaan',
+      format: editingPublicDoc.format || 'PDF',
+      size: editingPublicDoc.size || '1.5 MB',
+      updated: editingPublicDoc.updated || 'Oktober 2026',
+      url: editingPublicDoc.url || '#'
+    }, currentAdmin.name);
+    setShowPublicDocModal(false);
+    setEditingPublicDoc(null);
+    onDataChanged();
+    showFeedback('Dokumen unduhan resmi kesiswaan berhasil disimpan.');
+  };
+
+  const handleDeletePubDoc = (id: string, title: string) => {
+    if (confirm(`Hapus dokumen "${title}"?`)) {
+      StorageService.deletePublicDocument(id, currentAdmin.name);
+      onDataChanged();
+      showFeedback('Dokumen unduhan berhasil dihapus.');
+    }
+  };
+
+  // Gallery Save
+  const handleSaveGallery = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingGallery?.title || !editingGallery?.url) return;
+
+    StorageService.saveGalleryItem({
+      id: editingGallery.id,
+      title: editingGallery.title,
+      description: editingGallery.description || '',
+      category: (editingGallery.category as any) || 'Kegiatan Sekolah',
+      type: editingGallery.type || 'image',
+      url: editingGallery.url,
+      date: editingGallery.date || 'Oktober 2026',
+      year: editingGallery.year ? Number(editingGallery.year) : 2026,
+      photographer: editingGallery.photographer || 'Dokumentasi Kesiswaan SMESA'
+    }, currentAdmin.name);
+
+    setShowGalleryModal(false);
+    setEditingGallery(null);
+    onDataChanged();
+    showFeedback('Dokumentasi foto/video galeri berhasil disimpan.');
+  };
+
+  const handleDeleteGallery = (id: string, title: string) => {
+    if (confirm(`Hapus dokumentasi "${title}"?`)) {
+      StorageService.deleteGalleryItem(id, currentAdmin.name);
+      onDataChanged();
+      showFeedback('Item galeri berhasil dihapus.');
+    }
+  };
+
+  // OSIS Proker Save
+  const handleSaveOsisProker = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOsisProker?.name) return;
+
+    StorageService.saveOsisProker({
+      id: editingOsisProker.id,
+      name: editingOsisProker.name,
+      division: editingOsisProker.division || 'Sekbid OSIS',
+      month: editingOsisProker.month || 'November 2026',
+      status: editingOsisProker.status || 'terencana',
+      desc: editingOsisProker.desc || ''
+    }, currentAdmin.name);
+
+    setShowOsisProkerModal(false);
+    setEditingOsisProker(null);
+    setOsisData(StorageService.getOsisMpk());
+    onDataChanged();
+    showFeedback('Program kerja OSIS berhasil disimpan.');
+  };
+
+  const handleDeleteOsisProker = (id: string, name: string) => {
+    if (confirm(`Hapus program kerja "${name}"?`)) {
+      StorageService.deleteOsisProker(id, currentAdmin.name);
+      setOsisData(StorageService.getOsisMpk());
+      onDataChanged();
+      showFeedback('Program kerja OSIS berhasil dihapus.');
+    }
+  };
+
+  // OSIS Sekbid Save
+  const handleSaveOsisSekbid = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOsisSekbid?.title || !editingOsisSekbid?.num) return;
+
+    StorageService.saveOsisSekbid({
+      id: editingOsisSekbid.id,
+      num: editingOsisSekbid.num,
+      title: editingOsisSekbid.title,
+      coordinator: editingOsisSekbid.coordinator || '',
+      desc: editingOsisSekbid.desc || ''
+    }, currentAdmin.name);
+
+    setShowOsisSekbidModal(false);
+    setEditingOsisSekbid(null);
+    setOsisData(StorageService.getOsisMpk());
+    onDataChanged();
+    showFeedback('Divisi sekbid OSIS berhasil disimpan.');
+  };
+
+  const handleDeleteOsisSekbid = (id: string, title: string) => {
+    if (confirm(`Hapus divisi "${title}"?`)) {
+      StorageService.deleteOsisSekbid(id, currentAdmin.name);
+      setOsisData(StorageService.getOsisMpk());
+      onDataChanged();
+      showFeedback('Divisi sekbid OSIS berhasil dihapus.');
+    }
   };
 
   // News Save
@@ -366,9 +597,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               { id: 'berita', label: `Berita & Warta (${news.length})`, icon: Newspaper },
               { id: 'agenda', label: `Agenda Siswa (${agenda.length})`, icon: Calendar },
               { id: 'prestasi', label: `SMESA JUARA (${achievements.length})`, icon: Trophy },
+              { id: 'galeri', label: `Galeri Kegiatan (${gallery.length})`, icon: Camera },
+              { id: 'osis', label: 'OSIS & MPK SMESA', icon: Users },
               { id: 'aspirasi', label: `Aspirasi Siswa (${pendingAspirationsCount} Baru)`, icon: MessageSquare, badge: pendingAspirationsCount },
               { id: 'kontak', label: `Pesan Masuk (${unreadMessagesCount} Baru)`, icon: Mail, badge: unreadMessagesCount },
-              { id: 'profil', label: 'Profil & Sambutan Waka', icon: Settings },
+              { id: 'profil', label: 'Profil Kesiswaan (4 Menu)', icon: Building2 },
               { id: 'audit', label: 'Log Riwayat Audit', icon: History }
             ].map(item => {
               const Icon = item.icon;
@@ -927,6 +1160,244 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
+          {/* TAB: PENGELOLAAN GALERI KEGIATAN */}
+          {activeTab === 'galeri' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Camera className="w-5 h-5 text-amber-400" />
+                    <span>Pengelolaan Galeri & Dokumentasi Kegiatan</span>
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Tambah, edit, dan kelola foto serta video dokumentasi resmi kesiswaan SMK Negeri 1 Jember.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setEditingGallery({
+                      title: '',
+                      description: '',
+                      category: 'Kegiatan Sekolah',
+                      type: 'image',
+                      url: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1200&auto=format&fit=crop',
+                      date: 'Oktober 2026',
+                      year: 2026,
+                      photographer: 'Tim Dokumentasi Kesiswaan'
+                    });
+                    setShowGalleryModal(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-lg transition-colors cursor-pointer shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah Dokumentasi Baru</span>
+                </button>
+              </div>
+
+              <div className="bg-slate-800/80 border border-slate-700 rounded-xl overflow-hidden">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
+                    <tr>
+                      <th className="p-3">Media</th>
+                      <th className="p-3">Judul Dokumentasi</th>
+                      <th className="p-3">Kategori</th>
+                      <th className="p-3">Tahun / Tanggal</th>
+                      <th className="p-3">Fotografer</th>
+                      <th className="p-3 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {gallery.map(item => (
+                      <tr key={item.id} className="hover:bg-slate-800/50">
+                        <td className="p-3">
+                          <img src={item.url} alt={item.title} className="w-14 h-10 object-cover rounded border border-slate-700" />
+                        </td>
+                        <td className="p-3 font-semibold text-white max-w-xs truncate">
+                          {item.title}
+                          <p className="text-[11px] text-slate-400 truncate">{item.description}</p>
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950 text-blue-300 border border-blue-800/60">
+                            {item.category}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-400">{item.date} ({item.year})</td>
+                        <td className="p-3 text-slate-400">{item.photographer || 'Kesiswaan SMESA'}</td>
+                        <td className="p-3 text-right space-x-2">
+                          <button
+                            onClick={() => {
+                              setEditingGallery(item);
+                              setShowGalleryModal(true);
+                            }}
+                            className="text-amber-400 hover:text-white font-semibold cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteGallery(item.id, item.title)}
+                            className="text-red-400 hover:text-red-300 cursor-pointer"
+                          >
+                            Hapus
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: PENGELOLAAN OSIS & MPK */}
+          {activeTab === 'osis' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Users className="w-5 h-5 text-amber-400" />
+                    <span>Pengelolaan OSIS & MPK SMESA</span>
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Kelola divisi Seksi Bidang (Sekbid), Program Kerja Unggulan, dan Visi Misi organisasi kesiswaan.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setEditingOsisProker({
+                        name: '',
+                        division: 'Sekbid OSIS',
+                        month: 'November 2026',
+                        status: 'terencana',
+                        desc: ''
+                      });
+                      setShowOsisProkerModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-3.5 py-2 rounded-lg transition-colors cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah Proker</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setEditingOsisSekbid({
+                        num: `Sekbid ${osisData.sekbids.length + 1}`,
+                        title: '',
+                        coordinator: '',
+                        desc: ''
+                      });
+                      setShowOsisSekbidModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition-colors cursor-pointer shrink-0 border border-blue-700"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Tambah Sekbid</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-section: Program Kerja */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-amber-400" />
+                  <span>Daftar Program Kerja Unggulan OSIS</span>
+                </h3>
+
+                <div className="bg-slate-800/80 border border-slate-700 rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
+                      <tr>
+                        <th className="p-3">Nama Program Kerja</th>
+                        <th className="p-3">Divisi / Sekbid</th>
+                        <th className="p-3">Jadwal Pelaksanaan</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {osisData.prokers.map(prok => (
+                        <tr key={prok.id} className="hover:bg-slate-800/50">
+                          <td className="p-3 font-semibold text-white max-w-xs">
+                            <div>{prok.name}</div>
+                            <div className="text-[11px] text-slate-400 truncate">{prok.desc}</div>
+                          </td>
+                          <td className="p-3 text-slate-300">{prok.division}</td>
+                          <td className="p-3 text-slate-400">{prok.month}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              prok.status === 'terlaksana' ? 'bg-emerald-950 text-emerald-300' :
+                              prok.status === 'berjalan' ? 'bg-blue-950 text-blue-300' : 'bg-slate-700 text-slate-300'
+                            }`}>
+                              {prok.status}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right space-x-2">
+                            <button
+                              onClick={() => {
+                                setEditingOsisProker(prok);
+                                setShowOsisProkerModal(true);
+                              }}
+                              className="text-amber-400 hover:text-white font-semibold cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOsisProker(prok.id, prok.name)}
+                              className="text-red-400 hover:text-red-300 cursor-pointer"
+                            >
+                              Hapus
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Sub-section: Sekbid */}
+              <div className="space-y-3 pt-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 text-amber-400" />
+                  <span>Daftar Seksi Bidang (Sekbid) OSIS</span>
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {osisData.sekbids.map(sek => (
+                    <div key={sek.id} className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-amber-400 uppercase">{sek.num}</span>
+                        <div className="space-x-2 text-xs">
+                          <button
+                            onClick={() => {
+                              setEditingOsisSekbid(sek);
+                              setShowOsisSekbidModal(true);
+                            }}
+                            className="text-amber-400 hover:text-white font-semibold cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteOsisSekbid(sek.id, sek.title)}
+                            className="text-red-400 hover:text-red-300 cursor-pointer"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </div>
+                      <h4 className="font-bold text-sm text-white">{sek.title}</h4>
+                      {sek.coordinator && <p className="text-[11px] text-slate-400">Koordinator: {sek.coordinator}</p>}
+                      <p className="text-xs text-slate-300">{sek.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB: MANAJEMEN AKUN (TIM KESISWAAN & ADMINISTRATOR) */}
           {activeTab === 'users' && (
             <div className="space-y-6">
@@ -1105,30 +1576,160 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          {/* TAB 7: PENGATURAN PROFIL & SAMBUTAN */}
+          {/* TAB 7: PENGELOLAAN PROFIL KESISWAAN (4 MENU LENGKAP) */}
           {activeTab === 'profil' && (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-white">Pengaturan Profil & Sambutan Waka Kesiswaan</h2>
-                <p className="text-xs text-slate-400">Kelola sambutan resmi pimpinan kesiswaan dan teks running banner pengumuman atas.</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-amber-400" />
+                    <span>Pengelolaan Profil Kesiswaan SMESA</span>
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Ubah dan kelola Gambaran Umum & Peran, Agenda Program Kerja Tahunan, Struktur Organisasi, serta Berkas Unduhan Resmi.
+                  </p>
+                </div>
               </div>
 
-              {!isSuperAdmin ? (
-                <div className="bg-amber-950/40 border border-amber-800/60 p-4 rounded-xl text-xs text-amber-300 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>Hanya pengguna dengan peran <strong>Super Admin</strong> yang memiliki otoritas mengubah sambutan resmi kesiswaan.</span>
-                </div>
-              ) : (
-                <form onSubmit={handleSaveProfile} className="bg-slate-800/80 border border-slate-700 rounded-xl p-6 space-y-4 text-xs">
+              {/* Sub-menu Switcher Pill (4 Menu Profil Kesiswaan) */}
+              <div className="flex flex-wrap items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setProfileSubTab('gambaran')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold transition-colors cursor-pointer ${
+                    profileSubTab === 'gambaran'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span>1. Gambaran Umum & Peran</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setProfileSubTab('programs')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold transition-colors cursor-pointer ${
+                    profileSubTab === 'programs'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  }`}
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>2. Agenda Program Kerja ({(profile.annualPrograms || []).length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setProfileSubTab('struktur')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold transition-colors cursor-pointer ${
+                    profileSubTab === 'struktur'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  <span>3. Struktur Organisasi ({(profile.organizationalStructure || []).length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setProfileSubTab('dokumen')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold transition-colors cursor-pointer ${
+                    profileSubTab === 'dokumen'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>4. Unduhan Dokumen ({(profile.publicDocuments || []).length})</span>
+                </button>
+              </div>
+
+              {/* SUB-MENU 1: GAMBARAN UMUM & PERAN KESISWAAN */}
+              {profileSubTab === 'gambaran' && (
+                <form onSubmit={handleSaveGeneralProfile} className="bg-slate-800/80 border border-slate-700 rounded-xl p-6 space-y-5 text-xs text-slate-200">
+                  <div className="border-b border-slate-700 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-amber-400" />
+                        <span>Gambaran Umum, Peran, Visi Misi & Sambutan Pimpinan</span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Konten ini tampil pada halaman publik Profil Kesiswaan SMK Negeri 1 Jember.
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-amber-400 font-bold bg-amber-950/70 border border-amber-800/50 px-2.5 py-1 rounded">
+                      Dapat Diedit Semua Akun Staf
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">
+                        Nama Pimpinan / Waka Kesiswaan:
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={wakaNameInput}
+                        onChange={(e) => setWakaNameInput(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">
+                        Jabatan Resmi:
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={wakaTitleInput}
+                        onChange={(e) => setWakaTitleInput(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-slate-300 font-bold mb-1">
-                      Running Ticker Pengumuman Teratas:
+                      URL Foto Resmi Waka Kesiswaan:
                     </label>
                     <input
-                      type="text"
-                      value={runningAnnouncement}
-                      onChange={(e) => setRunningAnnouncement(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-900"
+                      type="url"
+                      value={wakaPhotoInput}
+                      onChange={(e) => setWakaPhotoInput(e.target.value)}
+                      placeholder="https://images.unsplash.com/..."
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      Gambaran Umum Bidang Kesiswaan SMESA:
+                    </label>
+                    <textarea
+                      rows={3}
+                      required
+                      value={profileOverview}
+                      onChange={(e) => setProfileOverview(e.target.value)}
+                      placeholder="Deskripsikan peran unit kerja kesiswaan..."
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40 leading-relaxed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      Peran & Tanggung Jawab Utama Kesiswaan (Satu poin per baris):
+                    </label>
+                    <textarea
+                      rows={4}
+                      required
+                      value={profileRolesText}
+                      onChange={(e) => setProfileRolesText(e.target.value)}
+                      placeholder="Contoh: Pembinaan Karakter & Budi Pekerti: Menerapkan pembiasaan 5S..."
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40 leading-relaxed"
                     />
                   </div>
 
@@ -1137,22 +1738,320 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       Sambutan Resmi Wakil Kepala Sekolah Bidang Kesiswaan:
                     </label>
                     <textarea
-                      rows={6}
+                      rows={5}
+                      required
                       value={wakaGreeting}
                       onChange={(e) => setWakaGreeting(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-900 leading-relaxed"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40 leading-relaxed"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">
+                        Visi Kesiswaan SMESA:
+                      </label>
+                      <textarea
+                        rows={3}
+                        required
+                        value={profileVision}
+                        onChange={(e) => setProfileVision(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40 leading-relaxed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">
+                        Running Ticker Pengumuman Teratas:
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={runningAnnouncement}
+                        onChange={(e) => setRunningAnnouncement(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40 leading-relaxed"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      Misi Kesiswaan (Satu misi per baris):
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={profileMissionsText}
+                      onChange={(e) => setProfileMissionsText(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40 leading-relaxed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      Poin Pembiasaan Budaya 5S & Disiplin (Satu poin per baris):
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={disciplinePointsInput}
+                      onChange={(e) => setDisciplinePointsInput(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40 leading-relaxed"
                     />
                   </div>
 
                   <div className="pt-2 flex justify-end">
                     <button
                       type="submit"
-                      className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition-colors cursor-pointer"
+                      className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition-colors cursor-pointer shadow-md"
                     >
-                      Simpan Perubahan Profil
+                      Simpan Seluruh Gambaran Umum & Peran Kesiswaan
                     </button>
                   </div>
                 </form>
+              )}
+
+              {/* SUB-MENU 2: AGENDA PROGRAM KERJA TAHUNAN KESISWAAN */}
+              {profileSubTab === 'programs' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-base font-bold text-white flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-amber-400" />
+                        <span>Daftar Agenda & Program Kerja Tahunan Kesiswaan</span>
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Agenda strategis tahunan pembinaan karakter, masa pengenalan, pemusatan lomba, dan gelar kreasi.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setEditingAnnualProgram({
+                          title: '',
+                          category: 'Program Kerja Kesiswaan',
+                          period: 'Tahun 2026/2027',
+                          target: 'Siswa SMESA',
+                          description: '',
+                          status: 'terencana'
+                        });
+                        setShowAnnualProgramModal(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-lg transition-colors cursor-pointer shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Tambah Program Kerja Baru</span>
+                    </button>
+                  </div>
+
+                  <div className="bg-slate-800/80 border border-slate-700 rounded-xl overflow-hidden text-xs">
+                    <table className="w-full text-left text-slate-300">
+                      <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
+                        <tr>
+                          <th className="p-3">Program Kerja</th>
+                          <th className="p-3">Kategori</th>
+                          <th className="p-3">Periode</th>
+                          <th className="p-3">Target Sasaran</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800">
+                        {(profile.annualPrograms || []).map((prog) => (
+                          <tr key={prog.id} className="hover:bg-slate-800/50">
+                            <td className="p-3">
+                              <span className="font-bold text-white block">{prog.title}</span>
+                              <span className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{prog.description}</span>
+                            </td>
+                            <td className="p-3">
+                              <span className="text-[10px] font-bold text-amber-400 bg-amber-950/60 border border-amber-800/50 px-2 py-0.5 rounded">
+                                {prog.category}
+                              </span>
+                            </td>
+                            <td className="p-3 text-slate-300">{prog.period}</td>
+                            <td className="p-3 text-slate-400">{prog.target}</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                prog.status === 'selesai' ? 'bg-emerald-950 text-emerald-300' :
+                                prog.status === 'berjalan' ? 'bg-blue-950 text-blue-300' : 'bg-slate-700 text-slate-300'
+                              }`}>
+                                {prog.status === 'selesai' ? 'Selesai' : prog.status === 'berjalan' ? 'Berjalan' : 'Terencana'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right space-x-2">
+                              <button
+                                onClick={() => {
+                                  setEditingAnnualProgram(prog);
+                                  setShowAnnualProgramModal(true);
+                                }}
+                                className="text-amber-400 hover:text-white font-semibold cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAnnualProg(prog.id, prog.title)}
+                                className="text-red-400 hover:text-red-300 cursor-pointer"
+                              >
+                                Hapus
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* SUB-MENU 3: STRUKTUR ORGANISASI KESISWAAN */}
+              {profileSubTab === 'struktur' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-base font-bold text-white flex items-center gap-2">
+                        <Users className="w-4 h-4 text-amber-400" />
+                        <span>Daftar Anggota & Struktur Organisasi Kesiswaan</span>
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Kelola susunan pimpinan, pembina kesiswaan, staf tata tertib, dan pendamping ekstrakurikuler.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setEditingStaffMember({
+                          title: 'Staf Kesiswaan',
+                          name: '',
+                          role: 'Pembina Kesiswaan',
+                          desc: '',
+                          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop'
+                        });
+                        setShowStaffMemberModal(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-lg transition-colors cursor-pointer shrink-0"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Tambah Anggota Struktur Baru</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {(profile.organizationalStructure || []).map((staff) => (
+                      <div key={staff.id} className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 flex flex-col justify-between space-y-3">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <img src={staff.avatar} alt={staff.name} className="w-12 h-12 rounded-full object-cover border border-amber-400 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block truncate">{staff.title}</span>
+                              <h4 className="text-sm font-bold text-white truncate">{staff.name}</h4>
+                              <p className="text-[11px] text-slate-400 truncate">{staff.role}</p>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-300 leading-relaxed border-t border-slate-700/80 pt-2 line-clamp-2">
+                            {staff.desc}
+                          </p>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-700 flex items-center justify-end gap-2 text-xs">
+                          <button
+                            onClick={() => {
+                              setEditingStaffMember(staff);
+                              setShowStaffMemberModal(true);
+                            }}
+                            className="text-amber-400 hover:text-white font-semibold cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                          <span className="text-slate-600">·</span>
+                          <button
+                            onClick={() => handleDeleteStaffMem(staff.id, staff.name)}
+                            className="text-red-400 hover:text-red-300 cursor-pointer"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUB-MENU 4: UNDUHAN DOKUMEN PUBLIK */}
+              {profileSubTab === 'dokumen' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-base font-bold text-white flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-amber-400" />
+                        <span>Daftar Unduhan Dokumen Publik Kesiswaan</span>
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Berkas tata tertib, SOP dispensasi kejuaraan, formulir izin kegiatan, dan panduan organisasi siswa.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setEditingPublicDoc({
+                          title: '',
+                          category: 'Dokumen Kesiswaan',
+                          format: 'PDF',
+                          size: '1.5 MB',
+                          updated: 'Oktober 2026',
+                          url: '#'
+                        });
+                        setShowPublicDocModal(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-lg transition-colors cursor-pointer shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Tambah Dokumen Unduhan Baru</span>
+                    </button>
+                  </div>
+
+                  <div className="bg-slate-800/80 border border-slate-700 rounded-xl overflow-hidden text-xs">
+                    <table className="w-full text-left text-slate-300">
+                      <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
+                        <tr>
+                          <th className="p-3">Judul Dokumen</th>
+                          <th className="p-3">Kategori</th>
+                          <th className="p-3">Format</th>
+                          <th className="p-3">Ukuran File</th>
+                          <th className="p-3">Tanggal Pembaruan</th>
+                          <th className="p-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800">
+                        {(profile.publicDocuments || []).map((doc) => (
+                          <tr key={doc.id} className="hover:bg-slate-800/50">
+                            <td className="p-3">
+                              <span className="font-bold text-white block">{doc.title}</span>
+                              <span className="text-[11px] text-slate-500 font-mono line-clamp-1">{doc.url || '#'}</span>
+                            </td>
+                            <td className="p-3 text-amber-400">{doc.category}</td>
+                            <td className="p-3 font-semibold text-slate-200">{doc.format}</td>
+                            <td className="p-3 text-slate-400">{doc.size}</td>
+                            <td className="p-3 text-slate-400">{doc.updated}</td>
+                            <td className="p-3 text-right space-x-2">
+                              <button
+                                onClick={() => {
+                                  setEditingPublicDoc(doc);
+                                  setShowPublicDocModal(true);
+                                }}
+                                className="text-amber-400 hover:text-white font-semibold cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeletePubDoc(doc.id, doc.title)}
+                                className="text-red-400 hover:text-red-300 cursor-pointer"
+                              >
+                                Hapus
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -1737,6 +2636,313 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg cursor-pointer"
                 >
                   Terapkan Password Baru
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 1: Tambah / Edit Program Kerja Tahunan */}
+      {showAnnualProgramModal && editingAnnualProgram && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-slate-900 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-700 p-6 sm:p-8 space-y-5 text-xs text-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-amber-400" />
+                <span>{editingAnnualProgram.id ? 'Edit Program Kerja Tahunan' : 'Tambah Program Kerja Baru'}</span>
+              </h3>
+              <button onClick={() => setShowAnnualProgramModal(false)}><X className="w-5 h-5" /></button>
+            </div>
+
+            <form onSubmit={handleSaveAnnualProg} className="space-y-4">
+              <div>
+                <label className="block font-bold mb-1">Nama Program Kerja</label>
+                <input
+                  type="text"
+                  required
+                  value={editingAnnualProgram.title || ''}
+                  onChange={(e) => setEditingAnnualProgram({ ...editingAnnualProgram, title: e.target.value })}
+                  placeholder="Contoh: Pemusatan Latihan Kontingen LKS 2026"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold mb-1">Kategori</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingAnnualProgram.category || ''}
+                    onChange={(e) => setEditingAnnualProgram({ ...editingAnnualProgram, category: e.target.value })}
+                    placeholder="Contoh: Orientasi & Karakter"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold mb-1">Periode Pelaksanaan</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingAnnualProgram.period || ''}
+                    onChange={(e) => setEditingAnnualProgram({ ...editingAnnualProgram, period: e.target.value })}
+                    placeholder="Contoh: Juli 2026 / Semester Gasal"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold mb-1">Target Sasaran</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingAnnualProgram.target || ''}
+                    onChange={(e) => setEditingAnnualProgram({ ...editingAnnualProgram, target: e.target.value })}
+                    placeholder="Contoh: Siswa Baru Kelas X (648 Siswa)"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold mb-1">Status Program</label>
+                  <select
+                    value={editingAnnualProgram.status || 'terencana'}
+                    onChange={(e) => setEditingAnnualProgram({ ...editingAnnualProgram, status: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  >
+                    <option value="terencana">Terencana</option>
+                    <option value="berjalan">Sedang Berjalan</option>
+                    <option value="selesai">Selesai</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">Deskripsi & Rincian Agenda</label>
+                <textarea
+                  rows={4}
+                  required
+                  value={editingAnnualProgram.description || ''}
+                  onChange={(e) => setEditingAnnualProgram({ ...editingAnnualProgram, description: e.target.value })}
+                  placeholder="Uraikan tujuan dan alur pelaksanaan kegiatan..."
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white leading-relaxed"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowAnnualProgramModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg cursor-pointer"
+                >
+                  Simpan Program Kerja
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2: Tambah / Edit Anggota Struktur Organisasi */}
+      {showStaffMemberModal && editingStaffMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-slate-900 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-700 p-6 sm:p-8 space-y-5 text-xs text-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-amber-400" />
+                <span>{editingStaffMember.id ? 'Edit Anggota Struktur' : 'Tambah Anggota Struktur Kesiswaan'}</span>
+              </h3>
+              <button onClick={() => setShowStaffMemberModal(false)}><X className="w-5 h-5" /></button>
+            </div>
+
+            <form onSubmit={handleSaveStaffMem} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold mb-1">Nama Lengkap & Gelar</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingStaffMember.name || ''}
+                    onChange={(e) => setEditingStaffMember({ ...editingStaffMember, name: e.target.value })}
+                    placeholder="Contoh: Ahmad Fauzi, S.Pd."
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold mb-1">Posisi / Jabatan</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingStaffMember.title || ''}
+                    onChange={(e) => setEditingStaffMember({ ...editingStaffMember, title: e.target.value })}
+                    placeholder="Contoh: Koordinator Pembina OSIS"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">Tupoksi / Peran Khusus</label>
+                <input
+                  type="text"
+                  required
+                  value={editingStaffMember.role || ''}
+                  onChange={(e) => setEditingStaffMember({ ...editingStaffMember, role: e.target.value })}
+                  placeholder="Contoh: Pengawalan Program Kerja & Kepemimpinan Siswa"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">URL Foto Profil / Avatar</label>
+                <input
+                  type="url"
+                  value={editingStaffMember.avatar || ''}
+                  onChange={(e) => setEditingStaffMember({ ...editingStaffMember, avatar: e.target.value })}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">Deskripsi Tugas & Tanggung Jawab</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={editingStaffMember.desc || ''}
+                  onChange={(e) => setEditingStaffMember({ ...editingStaffMember, desc: e.target.value })}
+                  placeholder="Rincian deskripsi kerja pembina kesiswaan..."
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white leading-relaxed"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowStaffMemberModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg cursor-pointer"
+                >
+                  Simpan Anggota Struktur
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 3: Tambah / Edit Unduhan Dokumen Publik */}
+      {showPublicDocModal && editingPublicDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-slate-900 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-700 p-6 sm:p-8 space-y-5 text-xs text-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <FileText className="w-5 h-5 text-amber-400" />
+                <span>{editingPublicDoc.id ? 'Edit Dokumen Unduhan' : 'Tambah Dokumen Unduhan Baru'}</span>
+              </h3>
+              <button onClick={() => setShowPublicDocModal(false)}><X className="w-5 h-5" /></button>
+            </div>
+
+            <form onSubmit={handleSavePubDoc} className="space-y-4">
+              <div>
+                <label className="block font-bold mb-1">Judul Dokumen Publik</label>
+                <input
+                  type="text"
+                  required
+                  value={editingPublicDoc.title || ''}
+                  onChange={(e) => setEditingPublicDoc({ ...editingPublicDoc, title: e.target.value })}
+                  placeholder="Contoh: Tata Tertib & Buku Saku Disiplin Peserta Didik"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold mb-1">Kategori Dokumen</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingPublicDoc.category || ''}
+                    onChange={(e) => setEditingPublicDoc({ ...editingPublicDoc, category: e.target.value })}
+                    placeholder="Contoh: Tata Tertib Siswa / Formulir Izin"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold mb-1">Format Berkas</label>
+                  <select
+                    value={editingPublicDoc.format || 'PDF'}
+                    onChange={(e) => setEditingPublicDoc({ ...editingPublicDoc, format: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  >
+                    <option value="PDF">PDF</option>
+                    <option value="DOCX">DOCX / Word</option>
+                    <option value="XLSX">XLSX / Excel</option>
+                    <option value="ZIP">ZIP / Arsip</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold mb-1">Ukuran File</label>
+                  <input
+                    type="text"
+                    value={editingPublicDoc.size || '1.5 MB'}
+                    onChange={(e) => setEditingPublicDoc({ ...editingPublicDoc, size: e.target.value })}
+                    placeholder="Contoh: 2.4 MB"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold mb-1">Bulan/Tahun Pembaruan</label>
+                  <input
+                    type="text"
+                    value={editingPublicDoc.updated || 'Oktober 2026'}
+                    onChange={(e) => setEditingPublicDoc({ ...editingPublicDoc, updated: e.target.value })}
+                    placeholder="Contoh: Oktober 2026"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">URL / Tautan Unduh Berkas</label>
+                <input
+                  type="text"
+                  value={editingPublicDoc.url || '#'}
+                  onChange={(e) => setEditingPublicDoc({ ...editingPublicDoc, url: e.target.value })}
+                  placeholder="https://... atau #"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowPublicDocModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg cursor-pointer"
+                >
+                  Simpan Dokumen
                 </button>
               </div>
             </form>

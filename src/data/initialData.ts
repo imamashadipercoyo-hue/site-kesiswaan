@@ -6,7 +6,8 @@ import {
   GalleryItem,
   StudentAspiration,
   ContactMessage,
-  SchoolProfileData
+  SchoolProfileData,
+  OsisMpkData
 } from '../types';
 
 export const INITIAL_SCHOOL_PROFILE: SchoolProfileData = {
@@ -36,7 +37,200 @@ export const INITIAL_SCHOOL_PROFILE: SchoolProfileData = {
       'Penggunaan gawai cerdas (smartphone) yang bertanggung jawab untuk keperluan pembelajaran dan literasi digital.'
     ]
   },
-  runningAnnouncement: '📢 Pendaftaran Seleksi Calon Pengurus OSIS & MPK Masa Bakti 2026/2027 telah dibuka! Pantau jadwal dan unduh formulir di menu OSIS & MPK.'
+  runningAnnouncement: '📢 Pendaftaran Seleksi Calon Pengurus OSIS & MPK Masa Bakti 2026/2027 telah dibuka! Pantau jadwal dan unduh formulir di menu OSIS & MPK.',
+  overview: 'Bidang Kesiswaan SMK Negeri 1 Jember merupakan unit kerja strategis di bawah kepemimpinan Kepala Sekolah yang secara khusus bertugas merancang, mengawal, dan mengevaluasi seluruh kebijakan pembinaan peserta didik selama menempuh pendidikan di SMESA.',
+  rolesAndFunctions: [
+    'Pembinaan Karakter & Budi Pekerti: Menerapkan pembiasaan 5S, kedisiplinan berkeadilan, dan nilai Profil Pelajar Pancasila.',
+    'Pengawalan Organisasi Siswa: Membina kemandirian fungsionaris OSIS, MPK, dan kepanitiaan kegiatan siswa.',
+    'Pengembangan 22 Ekstrakurikuler: Memfasilitasi sarana latihan, regenerasi anggota, dan kompetisi unjuk karya.',
+    'Akselerasi Prestasi Lomba (SMESA JUARA): Membina kontingen kompetisi kejuruan LKS, O2SN, FLS2N, hingga level nasional.',
+    'Perlindungan Siswa & Lingkungan Aman: Mencegah tindak kekerasan, perundungan siber, dan menciptakan rasa aman inklusif.'
+  ],
+  annualPrograms: [
+    {
+      id: 'pro-1',
+      title: 'Masa Pengenalan Lingkungan Sekolah (MPLS) Ramah & Edukatif',
+      category: 'Orientasi & Karakter',
+      period: 'Juli 2026',
+      target: 'Seluruh Siswa Baru Kelas X (648 Siswa)',
+      description: 'Pengenalan budaya sekolah, tata tertib, kurikulum merdeka kejuruan, wawasan kebangsaan, serta deklarasi anti-perundungan bebas kekerasan.',
+      status: 'selesai'
+    },
+    {
+      id: 'pro-2',
+      title: 'Pemusatan Latihan & Talenta SMESA JUARA (LKS & O2SN)',
+      category: 'Prestasi & Kejuaraan',
+      period: 'Agustus - November 2026',
+      target: 'Kontingen Lomba 8 Jurusan Keahlian',
+      description: 'Bimbingan teknis intensif dan karantina praktikum bersama mitra industri untuk persiapan LKS Tingkat Provinsi dan Nasional.',
+      status: 'berjalan'
+    },
+    {
+      id: 'pro-3',
+      title: 'Latihan Dasar Kepemimpinan Siswa (LDKS) Gabungan OSIS-MPK',
+      category: 'Kepemimpinan & Organisasi',
+      period: 'Oktober 2026',
+      target: 'Pengurus Baru OSIS, MPK & Ekstrakurikuler',
+      description: 'Pendidikan kepemimpinan berkarakter, manajemen konflik, perumusan program kerja, dan outbound pembentukan mental tanggung jawab.',
+      status: 'berjalan'
+    },
+    {
+      id: 'pro-4',
+      title: 'SMESA Fest & Gelar Karya Ekstrakurikuler Akhir Semester',
+      category: 'Seni Budaya & Kreasi',
+      period: 'Desember 2026',
+      target: 'Warga Sekolah & Masyarakat Umum',
+      description: 'Panggung unjuk bakat 22 ekstrakurikuler seni bela diri, tari tradisional Labako, musik band, paduan suara, serta bazar kewirausahaan siswa.',
+      status: 'terencana'
+    },
+    {
+      id: 'pro-5',
+      title: 'Bulan Bakti Sosial & SMESA Peduli Lingkungan Hidup',
+      category: 'Kepedulian Sosial',
+      period: 'Januari 2027',
+      target: 'Masyarakat Sekitar Patrang & Jember',
+      description: 'Penyaluran sembako sukarela, penanaman pohon mangrove, dan servis gratis berkala sepeda motor untuk warga kurang mampu.',
+      status: 'terencana'
+    }
+  ],
+  organizationalStructure: [
+    {
+      id: 'stf-1',
+      title: 'Wakil Kepala Sekolah Bidang Kesiswaan',
+      name: 'Drs. H. Bambang Sudarsono, M.Pd.',
+      role: 'Penanggung Jawab Kebijakan & Pembinaan Kesiswaan',
+      avatar: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=400&auto=format&fit=crop',
+      desc: 'Memimpin perencanaan, pembinaan kedisiplinan, koordinasi organisasi siswa, pembinaan prestasi, dan kemitraan kesiswaan.'
+    },
+    {
+      id: 'stf-2',
+      title: 'Staf Pembina OSIS & MPK',
+      name: 'Dedy Kurniawan, S.Pd.',
+      role: 'Koordinator Kepengurusan & Demokrasi Siswa',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop',
+      desc: 'Mendampingi regenerasi pengurus OSIS/MPK, manajemen agenda kerja, pelaksanaan PEMILOS, dan ruang aspirasi siswa.'
+    },
+    {
+      id: 'stf-3',
+      title: 'Koordinator Ekstrakurikuler',
+      name: 'Dewi Anggraeni, S.Sn.',
+      role: 'Pengembangan Minat, Bakat & Gelar Karya',
+      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop',
+      desc: 'Mengkoordinir 22 cabang ekstrakurikuler, evaluasi pembina, penjadwalan latihan, dan pementasan seni budaya.'
+    },
+    {
+      id: 'stf-4',
+      title: 'Ketua Tim Ketertiban & Disiplin Karakter',
+      name: 'Budi Santoso, S.Pd.',
+      role: 'Penegakan Tata Tertib & Budaya 5S SMESA',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400&auto=format&fit=crop',
+      desc: 'Mengawal ketertiban harian, apel pagi, kepatuhan seragam, pembinaan kedisiplinan humanis, dan pengawasan gerbang.'
+    },
+    {
+      id: 'stf-5',
+      title: 'Koordinator SMESA JUARA & Lomba',
+      name: 'Ahmad Fauzi, S.Kom.',
+      role: 'Pemusatan Latihan & Talenta Berprestasi',
+      avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=400&auto=format&fit=crop',
+      desc: 'Memfasilitasi kontingen lomba kejuruan LKS, O2SN, FLS2N, administrasi dispensasi, dan sertifikasi prestasi SKPI.'
+    },
+    {
+      id: 'stf-6',
+      title: 'Koordinator Bimbingan Konseling & Layanan Karakter',
+      name: 'Dra. Hj. Sri Wahyuni, M.Psi.',
+      role: 'Konseling Preventif & Satgas Sekolah Ramah Anak',
+      avatar: 'https://images.unsplash.com/photo-1580894732444-8ecded7900cd?q=80&w=400&auto=format&fit=crop',
+      desc: 'Memberikan bimbingan pribadi-sosial, pendampingan karir, serta pencegahan perundungan di lingkungan sekolah.'
+    }
+  ],
+  publicDocuments: [
+    {
+      id: 'doc-1',
+      title: 'Buku Pedoman Tata Tertib & Karakter Siswa SMESA 2026/2027',
+      category: 'Tata Tertib Resmi',
+      format: 'PDF',
+      size: '2.4 MB',
+      updated: 'Oktober 2026',
+      url: '#'
+    },
+    {
+      id: 'doc-2',
+      title: 'Formulir Permohonan Izin & Dispensasi Resmi Mengikuti Lomba',
+      category: 'Administrasi Lomba',
+      format: 'DOCX / PDF',
+      size: '450 KB',
+      updated: 'September 2026',
+      url: '#'
+    },
+    {
+      id: 'doc-3',
+      title: 'Buku Panduan & Anggaran Dasar Organisasi Siswa OSIS & MPK',
+      category: 'Pedoman Organisasi',
+      format: 'PDF',
+      size: '1.8 MB',
+      updated: 'Agustus 2026',
+      url: '#'
+    },
+    {
+      id: 'doc-4',
+      title: 'Katalog Jadwal & Tata Cara Registrasi 22 Ekstrakurikuler SMESA',
+      category: 'Panduan Ekstra',
+      format: 'PDF',
+      size: '3.1 MB',
+      updated: 'Juli 2026',
+      url: '#'
+    }
+  ]
+};
+
+export const INITIAL_OSIS_MPK: OsisMpkData = {
+  osisVision: 'Menjadikan OSIS SMESA sebagai lokomotif kreasi pelajar yang berintegritas tinggi, berjiwa wirausaha mandiri, tanggap teknologi, serta menjunjung tinggi nilai budaya dan budi pekerti luhur.',
+  osisMissions: [
+    'Menumbuhkan ketakwaan kepada Tuhan Yang Maha Esa melalui pembiasaan kegiatan keagamaan inklusif.',
+    'Meningkatkan kedisiplinan dan rasa kepemilikan siswa terhadap almamater SMK Negeri 1 Jember.',
+    'Mengakomodasi dan memperjuangkan aspirasi peserta didik secara transparan, santun, dan solutif.',
+    'Mengembangkan program kerja inovatif yang memadukan kejuruan vokasi, seni budaya lokal, dan digitalisasi.',
+    'Menjalin sinergi harmonis antara seluruh pengurus ekstrakurikuler, dewan guru, dan alumni berprestasi.'
+  ],
+  osisDescription: 'Organisasi Siswa Intra Sekolah (OSIS) SMK Negeri 1 Jember Masa Bakti 2026/2027 berkomitmen menjadi mitra strategis sekolah dalam membina karakter dan menggali potensi kepemimpinan pelajar.',
+  osisPeriod: 'Masa Bakti 2026/2027',
+  cabinetName: 'Kabinet Satya Citta SMESA',
+  chiefName: 'Rayhan Aditya Pratama',
+  chiefClass: 'XI Rekayasa Perangkat Lunak 1',
+  chiefAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop',
+  viceChiefName: 'Aulia Rahma Putri',
+  viceChiefClass: 'XI Akuntansi & Keuangan Lembaga 2',
+  viceChiefAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400&auto=format&fit=crop',
+  sekbids: [
+    { id: 'sek-1', num: 'Sekbid 1', title: 'Pembinaan Keimanan & Ketaqwaan', coordinator: 'Fadhil Nur Hidayat (XI DKV)', desc: 'Pengelolaan kegiatan hari besar keagamaan, tadarus Al-Qur’an, santunan sosial, dan toleransi beragama.' },
+    { id: 'sek-2', num: 'Sekbid 2', title: 'Budi Pekerti Luhur & Akhlak Mulia', coordinator: 'Siti Nur Aisyah (XI MPLB)', desc: 'Pelopor budaya 5S, penegakan tata tertib pelajar, dan kampanye anti-perundungan di lingkungan sekolah.' },
+    { id: 'sek-3', num: 'Sekbid 3', title: 'Kepribadian Unggul & Wawasan Kebangsaan', coordinator: 'Bagas Wicaksono (XI TKJ)', desc: 'Upacara bendera, peringatan hari nasional, kepramukaan, dan pendidikan bela negara.' },
+    { id: 'sek-4', num: 'Sekbid 4', title: 'Prestasi Akademik, Seni, dan Olahraga', coordinator: 'Dion Permana (XI RPL)', desc: 'Penyelenggaraan SMESA Cup, pembinaan delegasi lomba, dan festival kreativitas seni.' },
+    { id: 'sek-5', num: 'Sekbid 5', title: 'Demokrasi, HAM, & Pendidikan Politik Siswa', coordinator: 'Nabila Zahra (XI AKL)', desc: 'Penyelenggaraan PEMILOS, pelatihan kepemimpinan dasar, dan forum aspirasi siswa.' },
+    { id: 'sek-6', num: 'Sekbid 6', title: 'Kreativitas, Keterampilan, & Kewirausahaan', coordinator: 'Rizky Mahendra (XI Bisnis)', desc: 'Bazar kewirausahaan siswa, pameran produk jurusan, dan pelatihan literasi finansial.' },
+    { id: 'sek-7', num: 'Sekbid 7', title: 'Kualitas Jasmani, Kesehatan, & Gizi', coordinator: 'Galang Satria (XI Kuliner)', desc: 'Senam kesegaran jasmani, aksi donor darah, dan pengawasan higienitas kantin sehat.' },
+    { id: 'sek-8', num: 'Sekbid 8', title: 'Sastra, Budaya, & Teknologi Informasi', coordinator: 'M. Iqbal Pratama (XI RPL)', desc: 'Penerbitan warta digital kesiswaan, media sosial OSIS, dan pembuatan konten kreatif positif.' }
+  ],
+  prokers: [
+    { id: 'prok-1', name: 'SMESA Cup Antar Jurusan 2026', division: 'Sekbid 4 & Sekbid 7', month: 'November 2026', status: 'terencana', desc: 'Kompetisi cabang olahraga futsal, basket, bulutangkis, dan e-sport untuk memupuk sportivitas antarkelas.' },
+    { id: 'prok-2', name: 'Gerakan SMESA Bebas Bullying & Sekolah Ramah', division: 'Sekbid 2', month: 'Oktober 2026', status: 'berjalan', desc: 'Sosialisasi duta anti-perundungan, penandatanganan petisi siswa, dan workshop konselor sebaya.' },
+    { id: 'prok-3', name: 'Latihan Dasar Kepemimpinan Calon Pengurus', division: 'Sekbid 3 & 5', month: 'Oktober 2026', status: 'berjalan', desc: 'Pemberian materi kepemimpinan, kepribadian unggul, dan wawasan kebangsaan di Pussenif Malang.' },
+    { id: 'prok-4', name: 'Pameran Karya Vokasi & Bazar Siswa', division: 'Sekbid 6', month: 'Desember 2026', status: 'terencana', desc: 'Pameran produk kewirausahaan siswa 8 jurusan pada acara penerimaan rapor semester ganjil.' }
+  ],
+  mpkDescription: 'Majelis Perwakilan Kelas (MPK) adalah lembaga perwakilan legislatif tertinggi siswa SMESA yang bertugas mengawasi kinerja OSIS, menampung aspirasi kelas, dan menyusun anggaran dasar organisasi.',
+  mpkChiefName: 'Muhammad Ilham Firmansyah',
+  mpkChiefClass: 'XI Teknik Komputer & Jaringan 1',
+  mpkCommissions: [
+    { id: 'kom-1', name: 'Komisi A (Pengawasan Kebijakan & AD/ART)', focus: 'Mengawasi kepatuhan program kerja OSIS terhadap AD/ART dan tata tertib sekolah.', members: '5 Perwakilan Kelas' },
+    { id: 'kom-2', name: 'Komisi B (Aspirasi & Hubungan Peserta Didik)', focus: 'Menghimpun masukan, kritik konstruktif, dan kebutuhan fasilitas dari tiap kelas.', members: '6 Perwakilan Kelas' },
+    { id: 'kom-3', name: 'Komisi C (Evaluasi Program & Anggaran)', focus: 'Melakukan audit berkala laporan pertanggungjawaban kegiatan OSIS dan ekstra.', members: '5 Perwakilan Kelas' }
+  ],
+  pilketosStages: [
+    { id: 'stg-1', stage: 'Sosialisasi & Penjaringan Bakal Calon', date: '01 - 10 September 2026', status: 'selesai', desc: 'Pengumuman kriteria calon ketua, pengumpulan berkas portofolio, dan tes kelayakan akademik.' },
+    { id: 'stg-2', stage: 'Uji Kelayakan Visi Misi & Debat Publik', date: '15 - 20 September 2026', status: 'selesai', desc: 'Debat terbuka kandidat ketua OSIS di hadapan dewan guru dan perwakilan seluruh kelas SMESA.' },
+    { id: 'stg-3', stage: 'E-Voting Pemilihan Suara (PEMILOS)', date: '25 September 2026', status: 'selesai', desc: 'Pemungutan suara digital terintegrasi di laboratorium komputer dengan partisipasi 96.8% siswa.' },
+    { id: 'stg-4', stage: 'Pelantikan & Serah Terima Jabatan', date: '05 Oktober 2026', status: 'selesai', desc: 'Upacara khidmat serah terima pataka OSIS dari pengurus purna kepada pengurus baru di hadapan kepala sekolah.' }
+  ]
 };
 
 export const INITIAL_NEWS: NewsItem[] = [
