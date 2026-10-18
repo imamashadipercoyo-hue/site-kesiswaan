@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, User, Key, X, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { SchoolLogo } from '../common/SchoolLogo';
 import { AdminUser } from '../../types';
 import { DEFAULT_ADMINS, StorageService } from '../../services/storageService';
 
@@ -44,9 +45,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-blue-950 text-amber-400 flex items-center justify-center shrink-0">
-              <Lock className="w-5 h-5" />
-            </div>
+            <SchoolLogo size="md" className="shrink-0" />
             <div>
               <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
                 Autentikasi Staf Kesiswaan

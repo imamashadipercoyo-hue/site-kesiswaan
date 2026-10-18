@@ -25,6 +25,7 @@ import {
   History,
   UserCheck
 } from 'lucide-react';
+import { SchoolLogo } from '../common/SchoolLogo';
 import { 
   AdminUser, 
   NewsItem, 
@@ -222,9 +223,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Top Admin Header */}
       <header className="bg-slate-950 border-b border-slate-800 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-950 text-amber-400 flex items-center justify-center font-black">
-            <ShieldCheck className="w-5 h-5 text-amber-400" />
-          </div>
+          <SchoolLogo size="md" className="shrink-0" />
           <div>
             <h1 className="font-extrabold text-sm sm:text-base text-white tracking-tight flex items-center gap-2">
               <span>CMS KESISWAAN SMESA</span>

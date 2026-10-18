@@ -101,20 +101,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* School Branding */}
             <button
               onClick={() => handleLinkClick('beranda')}
-              className="flex items-center gap-3 text-left focus:outline-none group cursor-pointer"
+              className="flex items-center gap-2.5 sm:gap-3 text-left focus:outline-none group cursor-pointer transition-transform duration-200"
             >
-              <SchoolLogo size="lg" />
+              <SchoolLogo size="lg" className="shrink-0" />
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 group-hover:text-blue-900 transition-colors">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="text-sm sm:text-base md:text-lg font-extrabold tracking-tight text-slate-900 group-hover:text-blue-900 transition-colors">
                     KESISWAAN SMESA
                   </span>
-                  <span className="hidden sm:inline-block text-[10px] font-bold tracking-wider text-amber-700 bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 rounded">
+                  <span className="hidden sm:inline-block text-[9px] md:text-[10px] font-bold tracking-wider text-amber-700 bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 rounded">
                     OFFICIAL
                   </span>
                 </div>
-                <p className="text-xs font-semibold text-slate-600">SMK NEGERI 1 JEMBER</p>
-                <p className="text-[10px] tracking-wide text-amber-600 font-medium mt-0.5">
+                <p className="text-[11px] sm:text-xs font-semibold text-slate-600">SMK NEGERI 1 JEMBER</p>
+                <p className="text-[9px] sm:text-[10px] tracking-wide text-amber-600 font-medium mt-0.5">
                   Disiplin · Berkarakter · Berprestasi
                 </p>
               </div>
@@ -178,11 +178,18 @@ export const Navbar: React.FC<NavbarProps> = ({
       {mobileMenuOpen && (
         <div className="xl:hidden bg-white border-b border-slate-200 shadow-xl px-4 pt-3 pb-6 animate-fadeIn">
           <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-100">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Menu Navigasi
-            </span>
-            <span className="text-[11px] font-semibold text-amber-700">
-              SMK Negeri 1 Jember
+            <div className="flex items-center gap-2.5">
+              <SchoolLogo size="md" />
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-extrabold text-slate-900">KESISWAAN SMESA</span>
+                  <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1 py-0.5 rounded">OFFICIAL</span>
+                </div>
+                <p className="text-[10px] text-slate-500 font-medium">SMK Negeri 1 Jember</p>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold tracking-wider uppercase text-amber-600 bg-amber-50 px-2 py-1 rounded">
+              Navigasi
             </span>
           </div>
 
