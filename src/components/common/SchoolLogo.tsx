@@ -4,12 +4,16 @@ interface SchoolLogoProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   withGlow?: boolean;
+  animateEntry?: boolean;
+  withHoverScale?: boolean;
 }
 
 export const SchoolLogo: React.FC<SchoolLogoProps> = ({ 
   className = '', 
   size = 'md',
-  withGlow = true
+  withGlow = true,
+  animateEntry = true,
+  withHoverScale = true
 }) => {
   const [imageError, setImageError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -26,13 +30,19 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
 
   return (
     <div 
-      className={`relative flex items-center justify-center shrink-0 transition-all duration-300 ease-out select-none ${sizeClasses[size]} ${className}`}
+      className={`relative flex items-center justify-center shrink-0 select-none will-change-transform ${
+        sizeClasses[size]
+      } ${
+        animateEntry ? 'animate-fadeInDown' : ''
+      } ${
+        withHoverScale ? 'transition-transform duration-300 ease-out group-hover:scale-105 active:scale-95' : ''
+      } ${className}`}
     >
       {/* Dynamic ambient halo glow on hover / active */}
       {withGlow && (
         <div 
           aria-hidden="true"
-          className="absolute -inset-1 rounded-full bg-gradient-to-tr from-amber-500/20 via-blue-500/10 to-amber-400/30 opacity-0 group-hover:opacity-100 blur-xs transition-opacity duration-300 pointer-events-none"
+          className="absolute -inset-1 rounded-full bg-gradient-to-tr from-amber-500/25 via-blue-500/15 to-amber-400/35 opacity-0 group-hover:opacity-100 group-hover:scale-110 blur-xs transition-all duration-300 pointer-events-none"
         />
       )}
 
@@ -45,13 +55,13 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
           decoding="async"
           onLoad={() => setIsLoaded(true)}
           onError={() => setImageError(true)}
-          className={`w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(15,23,42,0.15)] group-hover:drop-shadow-[0_4px_14px_rgba(245,158,11,0.35)] transition-all duration-300 ease-out group-hover:scale-105 active:scale-95 will-change-transform ${
-            isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          className={`w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(15,23,42,0.12)] group-hover:drop-shadow-[0_6px_16px_rgba(245,158,11,0.38)] transition-all duration-300 ease-out will-change-transform ${
+            isLoaded ? 'opacity-100' : 'opacity-0 scale-95'
           }`}
         />
       ) : (
         /* Graceful SVG fallback in case of connection limits */
-        <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-sm transition-transform duration-300 group-hover:scale-105" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-sm transition-transform duration-300" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
             d="M50 5 L88 22 V52 C88 74 50 95 50 95 C50 95 12 74 12 52 V22 L50 5 Z"
             fill="#0f172a"

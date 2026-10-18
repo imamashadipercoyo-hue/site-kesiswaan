@@ -20,6 +20,11 @@ import {
   CheckCircle2, 
   AlertCircle,
   Eye,
+  EyeOff,
+  Key,
+  KeyRound,
+  Users,
+  Lock,
   RefreshCw,
   Archive,
   History,
@@ -64,6 +69,7 @@ type AdminTab =
   | 'galeri'
   | 'aspirasi'
   | 'kontak'
+  | 'users'
   | 'profil'
   | 'audit';
 
@@ -88,6 +94,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [wakaGreeting, setWakaGreeting] = useState(profile.wakaGreeting);
   const [runningAnnouncement, setRunningAnnouncement] = useState(profile.runningAnnouncement);
 
+  // User Accounts State (Tim Kesiswaan, Administrator)
+  const [adminAccounts, setAdminAccounts] = useState<AdminUser[]>(() => StorageService.getAdminAccounts());
+  const [editingUser, setEditingUser] = useState<Partial<AdminUser> | null>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showUserPasswordInModal, setShowUserPasswordInModal] = useState(false);
+
+  // Change Password Modal State
+  const [targetPasswordUser, setTargetPasswordUser] = useState<AdminUser | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [revealedPasswords, setRevealedPasswords] = useState<{ [id: string]: boolean }>({});
+
   // News Modal / Form States
   const [editingNews, setEditingNews] = useState<Partial<NewsItem> | null>(null);
   const [showNewsModal, setShowNewsModal] = useState(false);
@@ -104,8 +122,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [moderatingAsp, setModeratingAsp] = useState<StudentAspiration | null>(null);
   const [aspResponseText, setAspResponseText] = useState('');
 
-  const isSuperAdmin = currentAdmin.role === 'Super Admin';
-  const isEditor = currentAdmin.role === 'Editor Kesiswaan' || isSuperAdmin;
+  const isSuperAdmin = currentAdmin.role === 'Super Admin' || currentAdmin.role === 'Administrator';
+  const isEditor = currentAdmin.role === 'Editor Kesiswaan' || currentAdmin.role === 'Tim Kesiswaan' || isSuperAdmin;
 
   const showFeedback = (msg: string) => {
     setFeedbackMsg(msg);
@@ -215,6 +233,68 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     showFeedback(`Status aspirasi berhasil diubah ke "${status}".`);
   };
 
+  // User Accounts Handlers
+  const handleSaveUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser?.name || !editingUser?.email || !editingUser?.role) {
+      alert('Nama lengkap, email, dan peran akun wajib diisi.');
+      return;
+    }
+
+    if (!editingUser.id && !editingUser.password) {
+      alert('Kata sandi wajib dibuat untuk akun baru.');
+      return;
+    }
+
+    StorageService.saveAdminAccount({
+      id: editingUser.id,
+      name: editingUser.name.trim(),
+      email: editingUser.email.trim(),
+      role: editingUser.role,
+      password: editingUser.password?.trim() || 'smesa2026',
+      status: editingUser.status || 'aktif',
+      phone: editingUser.phone?.trim() || '-',
+      avatar: editingUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop'
+    }, currentAdmin.name);
+
+    setAdminAccounts(StorageService.getAdminAccounts());
+    setShowUserModal(false);
+    setEditingUser(null);
+    onDataChanged();
+    showFeedback(`Akun ${editingUser.name} berhasil disimpan.`);
+  };
+
+  const handleDeleteUser = (user: AdminUser) => {
+    if (user.id === currentAdmin.id) {
+      alert('Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif.');
+      return;
+    }
+
+    if (confirm(`Yakin ingin menghapus akun "${user.name}" (${user.email})? Tindakan ini tidak dapat dibatalkan.`)) {
+      const ok = StorageService.deleteAdminAccount(user.id, currentAdmin.name);
+      if (!ok) {
+        alert('Gagal menghapus: Harus ada minimal 1 akun Administrator utama.');
+        return;
+      }
+      setAdminAccounts(StorageService.getAdminAccounts());
+      onDataChanged();
+      showFeedback(`Akun ${user.name} berhasil dihapus.`);
+    }
+  };
+
+  const handleUpdatePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetPasswordUser || !newPasswordInput.trim()) return;
+
+    StorageService.updateAdminPassword(targetPasswordUser.id, newPasswordInput.trim(), currentAdmin.name);
+    setAdminAccounts(StorageService.getAdminAccounts());
+    setShowPasswordModal(false);
+    setTargetPasswordUser(null);
+    setNewPasswordInput('');
+    onDataChanged();
+    showFeedback(`Kata sandi akun ${targetPasswordUser.name} berhasil disetel ulang.`);
+  };
+
   const pendingAspirationsCount = aspirations.filter(a => a.status === 'menunggu_review').length;
   const unreadMessagesCount = contacts.filter(c => !c.isRead).length;
 
@@ -282,6 +362,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <nav className="space-y-1 text-xs font-semibold">
             {[
               { id: 'dashboard', label: 'Dashboard Ikhtisar', icon: LayoutDashboard },
+              { id: 'users', label: `Manajemen Akun (${adminAccounts.length})`, icon: Users },
               { id: 'berita', label: `Berita & Warta (${news.length})`, icon: Newspaper },
               { id: 'agenda', label: `Agenda Siswa (${agenda.length})`, icon: Calendar },
               { id: 'prestasi', label: `SMESA JUARA (${achievements.length})`, icon: Trophy },
@@ -318,11 +399,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {/* Role Switching Simulator for demo testing */}
           <div className="pt-4 border-t border-slate-800 space-y-2">
-            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
-              Uji Ganti Peran (RBAC Demo):
-            </span>
-            <div className="space-y-1">
-              {DEFAULT_ADMINS.map(adm => (
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                Akun Terdaftar:
+              </span>
+              <button
+                onClick={() => setActiveTab('users')}
+                className="text-[10px] text-amber-400 hover:underline cursor-pointer"
+              >
+                + Kelola
+              </button>
+            </div>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {adminAccounts.map(adm => (
                 <button
                   key={adm.id}
                   onClick={() => {
@@ -334,9 +423,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       ? 'bg-amber-500/20 text-amber-300 font-bold'
                       : 'text-slate-400 hover:text-white hover:bg-slate-900'
                   }`}
+                  title={`${adm.email} (PW: ${adm.password || '-'})`}
                 >
-                  <span>{adm.role}</span>
-                  {currentAdmin.id === adm.id && <Check className="w-3 h-3 text-amber-400" />}
+                  <div className="truncate max-w-[170px]">
+                    <span className="font-semibold block truncate">{adm.name.split(' ')[0]}</span>
+                    <span className="text-[10px] text-slate-500">{adm.role}</span>
+                  </div>
+                  {currentAdmin.id === adm.id && <Check className="w-3 h-3 text-amber-400 shrink-0" />}
                 </button>
               ))}
             </div>
@@ -834,6 +927,184 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
+          {/* TAB: MANAJEMEN AKUN (TIM KESISWAAN & ADMINISTRATOR) */}
+          {activeTab === 'users' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Users className="w-5 h-5 text-amber-400" />
+                    <span>Manajemen Akun Staf & Administrator</span>
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Kelola akun Tim Kesiswaan dan Administrator. Kata sandi akun dibuat, disetel, dan dapat diatur ulang langsung oleh Admin.
+                  </p>
+                </div>
+
+                {isSuperAdmin && (
+                  <button
+                    onClick={() => {
+                      setEditingUser({
+                        name: '',
+                        email: '',
+                        role: 'Tim Kesiswaan',
+                        password: 'smesa' + Math.floor(1000 + Math.random() * 9000),
+                        status: 'aktif',
+                        phone: ''
+                      });
+                      setShowUserPasswordInModal(false);
+                      setShowUserModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-lg transition-colors cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Buat Akun Baru</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Stats overview */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-1">
+                  <span className="text-slate-400 text-xs">Total Akun Terdaftar</span>
+                  <div className="text-2xl font-black text-white">{adminAccounts.length}</div>
+                  <p className="text-[11px] text-emerald-400">Aktif & Siap Digunakan</p>
+                </div>
+                <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-1">
+                  <span className="text-slate-400 text-xs">Administrator Sekolah</span>
+                  <div className="text-2xl font-black text-amber-400">
+                    {adminAccounts.filter(a => a.role === 'Administrator' || a.role === 'Super Admin').length}
+                  </div>
+                  <p className="text-[11px] text-slate-400">Hak Akses Penuh Sistem</p>
+                </div>
+                <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-1">
+                  <span className="text-slate-400 text-xs">Tim Kesiswaan</span>
+                  <div className="text-2xl font-black text-white">
+                    {adminAccounts.filter(a => a.role === 'Tim Kesiswaan' || a.role === 'Editor Kesiswaan').length}
+                  </div>
+                  <p className="text-[11px] text-slate-400">Kelola Warta & Program</p>
+                </div>
+                <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-1">
+                  <span className="text-slate-400 text-xs">Kontributor Berita</span>
+                  <div className="text-2xl font-black text-white">
+                    {adminAccounts.filter(a => a.role === 'Kontributor Berita').length}
+                  </div>
+                  <p className="text-[11px] text-slate-400">Penulis Draf Berita OSIS</p>
+                </div>
+              </div>
+
+              {/* Table of accounts */}
+              <div className="bg-slate-800/80 border border-slate-700 rounded-xl overflow-hidden text-xs">
+                <table className="w-full text-left text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
+                    <tr>
+                      <th className="p-3">Pengguna</th>
+                      <th className="p-3">Email Login</th>
+                      <th className="p-3">Peran / Role</th>
+                      <th className="p-3">Kata Sandi</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Dibuat / Terakhir Login</th>
+                      <th className="p-3 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {adminAccounts.map(acc => {
+                      const isRevealed = revealedPasswords[acc.id] || false;
+                      const isCurrent = acc.id === currentAdmin.id;
+                      return (
+                        <tr key={acc.id} className="hover:bg-slate-800/50">
+                          <td className="p-3">
+                            <div className="flex items-center gap-2.5">
+                              <img src={acc.avatar} alt={acc.name} className="w-8 h-8 rounded-full object-cover border border-slate-600" />
+                              <div>
+                                <span className="font-bold text-white block">{acc.name}</span>
+                                {isCurrent && (
+                                  <span className="text-[10px] text-amber-400 font-semibold">(Sedang Aktif)</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 text-slate-300 font-mono text-[11px]">{acc.email}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              acc.role === 'Administrator' || acc.role === 'Super Admin'
+                                ? 'bg-amber-950 text-amber-300 border border-amber-800/60'
+                                : acc.role === 'Tim Kesiswaan' || acc.role === 'Editor Kesiswaan'
+                                  ? 'bg-blue-950 text-blue-300 border border-blue-800/60'
+                                  : 'bg-slate-700 text-slate-300'
+                            }`}>
+                              {acc.role}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono">
+                            <div className="flex items-center gap-1.5">
+                              <span>{isRevealed ? (acc.password || '-') : '••••••••'}</span>
+                              <button
+                                type="button"
+                                onClick={() => setRevealedPasswords(prev => ({ ...prev, [acc.id]: !isRevealed }))}
+                                className="p-1 text-slate-400 hover:text-white cursor-pointer"
+                                title={isRevealed ? 'Sembunyikan' : 'Lihat Kata Sandi'}
+                              >
+                                {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              acc.status === 'aktif' || !acc.status ? 'bg-emerald-950 text-emerald-300' : 'bg-red-950 text-red-300'
+                            }`}>
+                              {acc.status || 'aktif'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-400 text-[11px]">
+                            <div>Dibuat: {acc.createdAt || 'Default'}</div>
+                            {acc.lastLogin && <div className="text-[10px] text-slate-500">Login: {acc.lastLogin}</div>}
+                          </td>
+                          <td className="p-3 text-right space-x-2">
+                            {isSuperAdmin && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setTargetPasswordUser(acc);
+                                    setNewPasswordInput('');
+                                    setShowPasswordModal(true);
+                                  }}
+                                  className="text-amber-400 hover:text-white font-semibold cursor-pointer inline-flex items-center gap-1"
+                                  title="Ubah Password"
+                                >
+                                  <Key className="w-3 h-3" />
+                                  <span>Password</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingUser(acc);
+                                    setShowUserPasswordInModal(false);
+                                    setShowUserModal(true);
+                                  }}
+                                  className="text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
+                                >
+                                  Edit
+                                </button>
+                                {!isCurrent && (
+                                  <button
+                                    onClick={() => handleDeleteUser(acc)}
+                                    className="text-red-400 hover:text-red-300 cursor-pointer"
+                                  >
+                                    Hapus
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* TAB 7: PENGATURAN PROFIL & SAMBUTAN */}
           {activeTab === 'profil' && (
             <div className="space-y-6">
@@ -1270,6 +1541,205 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Account Create / Edit Modal */}
+      {showUserModal && editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-slate-900 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-700 p-6 sm:p-8 space-y-5 text-xs text-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-amber-400" />
+                <h3 className="font-bold text-base text-white">
+                  {editingUser.id ? 'Edit Akun Staf / Admin' : 'Buat Akun Baru (Tim Kesiswaan / Admin)'}
+                </h3>
+              </div>
+              <button onClick={() => setShowUserModal(false)}><X className="w-5 h-5" /></button>
+            </div>
+
+            <form onSubmit={handleSaveUser} className="space-y-4">
+              <div>
+                <label className="block font-bold mb-1">Nama Lengkap Pengguna <span className="text-amber-400">*</span></label>
+                <input
+                  type="text"
+                  required
+                  value={editingUser.name || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                  placeholder="Contoh: Drs. H. Bambang Sudarsono, M.Pd. / Staf Kesiswaan"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold mb-1">Email Login <span className="text-amber-400">*</span></label>
+                  <input
+                    type="email"
+                    required
+                    value={editingUser.email || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                    placeholder="nama@smesa.sch.id"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold mb-1">Peran / Hak Akses <span className="text-amber-400">*</span></label>
+                  <select
+                    value={editingUser.role || 'Tim Kesiswaan'}
+                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white font-semibold"
+                  >
+                    <option value="Administrator">Administrator (Akses Penuh)</option>
+                    <option value="Tim Kesiswaan">Tim Kesiswaan (Kelola Konten & Aspirasi)</option>
+                    <option value="Editor Kesiswaan">Editor Kesiswaan (Kelola Berita & Agenda)</option>
+                    <option value="Kontributor Berita">Kontributor Berita (Draf Berita OSIS)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Password Setting Section (Dibuat dan diset dari akun admin) */}
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-amber-400 flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5" />
+                    <span>Kata Sandi Akun (Dibuat & Diset oleh Admin) <span className="text-amber-400">*</span></span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const generated = 'smesa' + Math.floor(1000 + Math.random() * 9000);
+                      setEditingUser({ ...editingUser, password: generated });
+                    }}
+                    className="text-[11px] text-amber-400 hover:underline cursor-pointer"
+                  >
+                    Generate Acak
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type={showUserPasswordInModal ? 'text' : 'password'}
+                    required={!editingUser.id}
+                    value={editingUser.password || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                    placeholder={editingUser.id ? 'Kosongkan jika tidak ingin mengubah password' : 'Ketik kata sandi untuk akun ini'}
+                    className="w-full pl-3 pr-10 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowUserPasswordInModal(!showUserPasswordInModal)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    {showUserPasswordInModal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Pemilik akun dapat langsung login menggunakan email dan kata sandi yang disetel ini.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold mb-1">Status Akun</label>
+                  <select
+                    value={editingUser.status || 'aktif'}
+                    onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  >
+                    <option value="aktif">Aktif (Dapat Login)</option>
+                    <option value="nonaktif">Nonaktif (Diblokir Sementara)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold mb-1">Nomor WhatsApp / HP</label>
+                  <input
+                    type="text"
+                    value={editingUser.phone || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, phone: e.target.value })}
+                    placeholder="0812xxxxxxxx"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowUserModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg cursor-pointer"
+                >
+                  Simpan Akun
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Password Reset Modal */}
+      {showPasswordModal && targetPasswordUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full border border-slate-700 p-6 sm:p-8 space-y-5 text-xs text-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-amber-400" />
+                <h3 className="font-bold text-base text-white">Setel Ulang Password Akun</h3>
+              </div>
+              <button onClick={() => setShowPasswordModal(false)}><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-1">
+              <span className="text-[11px] text-amber-400 font-bold">{targetPasswordUser.role}</span>
+              <h4 className="font-bold text-sm text-white">{targetPasswordUser.name}</h4>
+              <p className="text-slate-400 font-mono text-[11px]">{targetPasswordUser.email}</p>
+            </div>
+
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-200">Kata Sandi Baru:</label>
+                  <button
+                    type="button"
+                    onClick={() => setNewPasswordInput('smesa' + Math.floor(1000 + Math.random() * 9000))}
+                    className="text-[11px] text-amber-400 hover:underline cursor-pointer"
+                  >
+                    Generate Acak
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  placeholder="Ketik password baru"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg cursor-pointer"
+                >
+                  Terapkan Password Baru
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

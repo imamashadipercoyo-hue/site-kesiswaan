@@ -162,7 +162,12 @@ export interface ContactMessage {
   status: 'baru' | 'dibalas' | 'arsip';
 }
 
-export type AdminRole = 'Super Admin' | 'Editor Kesiswaan' | 'Kontributor Berita';
+export type AdminRole = 
+  | 'Administrator'
+  | 'Tim Kesiswaan'
+  | 'Super Admin' 
+  | 'Editor Kesiswaan' 
+  | 'Kontributor Berita';
 
 export interface AdminUser {
   id: string;
@@ -170,6 +175,19 @@ export interface AdminUser {
   email: string;
   role: AdminRole;
   avatar: string;
+  password?: string;
+  status?: 'aktif' | 'nonaktif';
+  phone?: string;
+  lastLogin?: string;
+  createdAt?: string;
+}
+
+export interface PasswordResetToken {
+  token: string;
+  email: string;
+  expiresAt: number;
+  createdAt: string;
+  isUsed: boolean;
 }
 
 export interface AuditLog {

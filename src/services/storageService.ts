@@ -8,7 +8,8 @@ import {
   ContactMessage,
   SchoolProfileData,
   AdminUser,
-  AuditLog
+  AuditLog,
+  PasswordResetToken
 } from '../types';
 import {
   INITIAL_SCHOOL_PROFILE,
@@ -32,6 +33,8 @@ const KEYS = {
   CONTACTS: 'smesa_contacts_v1',
   AUDIT_LOGS: 'smesa_audit_logs_v1',
   CURRENT_ADMIN: 'smesa_current_admin_v1',
+  ADMIN_ACCOUNTS: 'smesa_admin_accounts_v2',
+  RESET_TOKENS: 'smesa_reset_tokens_v1'
 };
 
 export const DEFAULT_ADMINS: AdminUser[] = [
@@ -39,22 +42,45 @@ export const DEFAULT_ADMINS: AdminUser[] = [
     id: 'usr-1',
     name: 'Drs. H. Bambang Sudarsono, M.Pd.',
     email: 'admin@smesa.sch.id',
-    role: 'Super Admin',
+    role: 'Administrator',
+    password: 'smesa2026',
+    status: 'aktif',
+    phone: '081234567890',
+    createdAt: '2026-10-01 08:00',
     avatar: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=200&auto=format&fit=crop'
   },
   {
     id: 'usr-2',
     name: 'Dedy Kurniawan, S.Pd.',
-    email: 'editor.kesiswaan@smesa.sch.id',
-    role: 'Editor Kesiswaan',
+    email: 'kesiswaan@smesa.sch.id',
+    role: 'Tim Kesiswaan',
+    password: 'kesiswaan2026',
+    status: 'aktif',
+    phone: '081234567891',
+    createdAt: '2026-10-02 09:30',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop'
   },
   {
     id: 'usr-3',
+    name: 'Budi Santoso, S.Pd.',
+    email: 'karakter@smesa.sch.id',
+    role: 'Tim Kesiswaan',
+    password: 'smesa123',
+    status: 'aktif',
+    phone: '081234567892',
+    createdAt: '2026-10-05 10:15',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&auto=format&fit=crop'
+  },
+  {
+    id: 'usr-4',
     name: 'Rayhan Aditya (Ketua OSIS)',
     email: 'kontributor.osis@smesa.sch.id',
     role: 'Kontributor Berita',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&auto=format&fit=crop'
+    password: 'osis2026',
+    status: 'aktif',
+    phone: '081234567893',
+    createdAt: '2026-10-10 14:00',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop'
   }
 ];
 
@@ -379,6 +405,226 @@ export const StorageService = {
     localStorage.removeItem(KEYS.CURRENT_ADMIN);
   },
 
+  // --- Admin Accounts Management ---
+  getAdminAccounts(): AdminUser[] {
+    const accounts = getFromStorage<AdminUser[]>(KEYS.ADMIN_ACCOUNTS, DEFAULT_ADMINS);
+    if (!accounts || accounts.length === 0) {
+      saveToStorage(KEYS.ADMIN_ACCOUNTS, DEFAULT_ADMINS);
+      return DEFAULT_ADMINS;
+    }
+    return accounts;
+  },
+
+  saveAdminAccount(account: Omit<AdminUser, 'id'> & { id?: string }, performedBy: string): AdminUser {
+    const all = this.getAdminAccounts();
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    if (account.id) {
+      const idx = all.findIndex(a => a.id === account.id);
+      if (idx !== -1) {
+        all[idx] = {
+          ...all[idx],
+          ...account
+        };
+        saveToStorage(KEYS.ADMIN_ACCOUNTS, all);
+        this.addAuditLog('Perbarui Akun Pengguna', 'Manajemen Akun', performedBy, `Memperbarui data akun ${all[idx].name} (${all[idx].email}) role ${all[idx].role}`);
+        return all[idx];
+      }
+    }
+
+    const newAccount: AdminUser = {
+      ...account,
+      id: `usr-${Date.now()}`,
+      status: account.status || 'aktif',
+      createdAt: dateStr,
+      avatar: account.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop'
+    };
+    all.push(newAccount);
+    saveToStorage(KEYS.ADMIN_ACCOUNTS, all);
+    this.addAuditLog('Buat Akun Baru', 'Manajemen Akun', performedBy, `Membuat akun baru ${newAccount.name} (${newAccount.email}) dengan role ${newAccount.role}`);
+    return newAccount;
+  },
+
+  deleteAdminAccount(id: string, performedBy: string): boolean {
+    const all = this.getAdminAccounts();
+    const target = all.find(a => a.id === id);
+    if (!target) return false;
+
+    // Prevent deleting last Administrator
+    const adminCount = all.filter(a => a.role === 'Administrator' || a.role === 'Super Admin').length;
+    if ((target.role === 'Administrator' || target.role === 'Super Admin') && adminCount <= 1) {
+      return false;
+    }
+
+    const filtered = all.filter(a => a.id !== id);
+    saveToStorage(KEYS.ADMIN_ACCOUNTS, filtered);
+    this.addAuditLog('Hapus Akun Pengguna', 'Manajemen Akun', performedBy, `Menghapus akun staf ${target.name} (${target.email})`);
+    return true;
+  },
+
+  updateAdminPassword(id: string, newPassword: string, performedBy: string): boolean {
+    const all = this.getAdminAccounts();
+    const idx = all.findIndex(a => a.id === id);
+    if (idx === -1) return false;
+
+    all[idx].password = newPassword;
+    saveToStorage(KEYS.ADMIN_ACCOUNTS, all);
+    this.addAuditLog('Ubah Password Akun', 'Manajemen Akun', performedBy, `Mengubah password untuk akun ${all[idx].name} (${all[idx].email})`);
+    return true;
+  },
+
+  authenticate(email: string, password: string): { success: boolean; user?: AdminUser; message?: string } {
+    const accounts = this.getAdminAccounts();
+    const user = accounts.find(a => a.email.toLowerCase().trim() === email.toLowerCase().trim());
+
+    if (!user) {
+      return { success: false, message: 'Email administrator atau tim kesiswaan tidak terdaftar.' };
+    }
+
+    if (user.status === 'nonaktif') {
+      return { success: false, message: 'Akun ini dinonaktifkan oleh administrator. Hubungi pimpinan kesiswaan.' };
+    }
+
+    if (user.password !== password) {
+      return { success: false, message: 'Kata sandi salah. Silakan periksa kembali kata sandi akun Anda.' };
+    }
+
+    // Update lastLogin
+    const now = new Date();
+    user.lastLogin = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    saveToStorage(KEYS.ADMIN_ACCOUNTS, accounts);
+
+    return { success: true, user };
+  },
+
+  // --- Password Reset Token System (Temporary Security Tokens) ---
+  requestPasswordReset(email: string): { success: boolean; message: string; token?: string; expiresAt?: number } {
+    const accounts = this.getAdminAccounts();
+    const user = accounts.find(a => a.email.toLowerCase().trim() === email.toLowerCase().trim());
+
+    if (!user) {
+      return { 
+        success: false, 
+        message: 'Alamat surel tidak terdaftar sebagai akun Administrator atau Tim Kesiswaan SMESA.' 
+      };
+    }
+
+    if (user.status === 'nonaktif') {
+      return { 
+        success: false, 
+        message: 'Akun ini dinonaktifkan oleh administrator. Hubungi Pimpinan Kesiswaan SMESA.' 
+      };
+    }
+
+    // Generate secure temporary token (format: SMESA-XXXXXX with 6 uppercase alphanumeric characters)
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const token = `SMESA-${code}`;
+    const now = new Date();
+    const expiresAt = Date.now() + 15 * 60 * 1000; // Valid for 15 minutes
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const tokens = getFromStorage<PasswordResetToken[]>(KEYS.RESET_TOKENS, []);
+    tokens.push({
+      token,
+      email: user.email,
+      expiresAt,
+      createdAt: dateStr,
+      isUsed: false
+    });
+    saveToStorage(KEYS.RESET_TOKENS, tokens);
+
+    this.addAuditLog(
+      'Permintaan Reset Password', 
+      'Autentikasi & Keamanan', 
+      user.name, 
+      `Token keamanan sementara ${token} dibuat untuk akun ${user.email} (berlaku 15 menit)`
+    );
+
+    return {
+      success: true,
+      message: 'Token keamanan berhasil diterbitkan. Gunakan token ini dalam waktu 15 menit.',
+      token,
+      expiresAt
+    };
+  },
+
+  verifyPasswordResetToken(email: string, token: string): { valid: boolean; message: string } {
+    const tokens = getFromStorage<PasswordResetToken[]>(KEYS.RESET_TOKENS, []);
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedToken = token.toUpperCase().trim();
+
+    const record = tokens.slice().reverse().find(t => 
+      t.email.toLowerCase().trim() === normalizedEmail &&
+      t.token.toUpperCase().trim() === normalizedToken
+    );
+
+    if (!record) {
+      return { valid: false, message: 'Token keamanan tidak valid atau salah ketik. Periksa kembali token Anda.' };
+    }
+
+    if (record.isUsed) {
+      return { valid: false, message: 'Token keamanan ini telah digunakan sebelumnya. Silakan ajukan token baru.' };
+    }
+
+    if (Date.now() > record.expiresAt) {
+      return { valid: false, message: 'Token keamanan telah kedaluwarsa (lebih dari 15 menit). Silakan ajukan token baru.' };
+    }
+
+    return { valid: true, message: 'Token keamanan valid.' };
+  },
+
+  resetPasswordWithToken(email: string, token: string, newPassword: string): { success: boolean; message: string } {
+    const tokenCheck = this.verifyPasswordResetToken(email, token);
+    if (!tokenCheck.valid) {
+      return { success: false, message: tokenCheck.message };
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, message: 'Kata sandi baru minimal 6 karakter demi standar keamanan akun sekolah.' };
+    }
+
+    const accounts = this.getAdminAccounts();
+    const user = accounts.find(a => a.email.toLowerCase().trim() === email.toLowerCase().trim());
+    if (!user) {
+      return { success: false, message: 'Akun administrator tidak ditemukan.' };
+    }
+
+    // Update user password
+    user.password = newPassword;
+    saveToStorage(KEYS.ADMIN_ACCOUNTS, accounts);
+
+    // Mark token as used
+    const tokens = getFromStorage<PasswordResetToken[]>(KEYS.RESET_TOKENS, []);
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedToken = token.toUpperCase().trim();
+    const record = tokens.slice().reverse().find(t => 
+      t.email.toLowerCase().trim() === normalizedEmail &&
+      t.token.toUpperCase().trim() === normalizedToken &&
+      !t.isUsed
+    );
+    if (record) {
+      record.isUsed = true;
+      saveToStorage(KEYS.RESET_TOKENS, tokens);
+    }
+
+    this.addAuditLog(
+      'Reset Password via Token', 
+      'Autentikasi & Keamanan', 
+      user.name, 
+      `Kata sandi untuk ${user.email} berhasil diperbarui menggunakan token pemulihan sementara.`
+    );
+
+    return { 
+      success: true, 
+      message: 'Kata sandi berhasil diperbarui! Silakan login menggunakan kata sandi baru Anda.' 
+    };
+  },
+
   // Reset to initial seed
   resetAllData(): void {
     localStorage.clear();
@@ -390,5 +636,6 @@ export const StorageService = {
     saveToStorage(KEYS.GALLERY, INITIAL_GALLERY);
     saveToStorage(KEYS.ASPIRATIONS, INITIAL_ASPIRATIONS);
     saveToStorage(KEYS.CONTACTS, INITIAL_CONTACT_MESSAGES);
+    saveToStorage(KEYS.ADMIN_ACCOUNTS, DEFAULT_ADMINS);
   }
 };
