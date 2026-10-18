@@ -1,0 +1,6 @@
+{
+  "name": "Kesiswaan Digital SMESA",
+  "description": "Portal resmi Kesiswaan SMK Negeri 1 Jember - Wadah Tumbuh, Berkarya, dan Berprestasi. Informasi kegiatan peserta didik, pembinaan karakter, prestasi siswa SMESA JUARA, OSIS & MPK, dan ekstrakurikuler.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

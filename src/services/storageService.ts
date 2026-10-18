@@ -1,0 +1,394 @@
+import {
+  NewsItem,
+  AgendaItem,
+  AchievementItem,
+  ExtracurricularItem,
+  GalleryItem,
+  StudentAspiration,
+  ContactMessage,
+  SchoolProfileData,
+  AdminUser,
+  AuditLog
+} from '../types';
+import {
+  INITIAL_SCHOOL_PROFILE,
+  INITIAL_NEWS,
+  INITIAL_AGENDA,
+  INITIAL_ACHIEVEMENTS,
+  INITIAL_EXTRACURRICULARS,
+  INITIAL_GALLERY,
+  INITIAL_ASPIRATIONS,
+  INITIAL_CONTACT_MESSAGES
+} from '../data/initialData';
+
+const KEYS = {
+  PROFILE: 'smesa_profile_v1',
+  NEWS: 'smesa_news_v1',
+  AGENDA: 'smesa_agenda_v1',
+  ACHIEVEMENTS: 'smesa_achievements_v1',
+  EXTRAS: 'smesa_extras_v1',
+  GALLERY: 'smesa_gallery_v1',
+  ASPIRATIONS: 'smesa_aspirations_v1',
+  CONTACTS: 'smesa_contacts_v1',
+  AUDIT_LOGS: 'smesa_audit_logs_v1',
+  CURRENT_ADMIN: 'smesa_current_admin_v1',
+};
+
+export const DEFAULT_ADMINS: AdminUser[] = [
+  {
+    id: 'usr-1',
+    name: 'Drs. H. Bambang Sudarsono, M.Pd.',
+    email: 'admin@smesa.sch.id',
+    role: 'Super Admin',
+    avatar: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=200&auto=format&fit=crop'
+  },
+  {
+    id: 'usr-2',
+    name: 'Dedy Kurniawan, S.Pd.',
+    email: 'editor.kesiswaan@smesa.sch.id',
+    role: 'Editor Kesiswaan',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop'
+  },
+  {
+    id: 'usr-3',
+    name: 'Rayhan Aditya (Ketua OSIS)',
+    email: 'kontributor.osis@smesa.sch.id',
+    role: 'Kontributor Berita',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&auto=format&fit=crop'
+  }
+];
+
+// Helper for safe JSON parse
+function getFromStorage<T>(key: string, defaultValue: T): T {
+  try {
+    const data = localStorage.getItem(key);
+    if (!data) return defaultValue;
+    return JSON.parse(data) as T;
+  } catch (e) {
+    console.error(`Error loading ${key} from localStorage:`, e);
+    return defaultValue;
+  }
+}
+
+function saveToStorage<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.error(`Error saving ${key} to localStorage:`, e);
+  }
+}
+
+export const StorageService = {
+  // --- Profile ---
+  getProfile(): SchoolProfileData {
+    return getFromStorage<SchoolProfileData>(KEYS.PROFILE, INITIAL_SCHOOL_PROFILE);
+  },
+  updateProfile(profile: Partial<SchoolProfileData>, adminName: string): SchoolProfileData {
+    const current = this.getProfile();
+    const updated = { ...current, ...profile };
+    saveToStorage(KEYS.PROFILE, updated);
+    this.addAuditLog('Perbarui Profil Kesiswaan', 'Profil & Sambutan', adminName, 'Memperbarui data sambutan/visi/budaya kesiswaan');
+    return updated;
+  },
+
+  // --- News ---
+  getNews(): NewsItem[] {
+    return getFromStorage<NewsItem[]>(KEYS.NEWS, INITIAL_NEWS);
+  },
+  getPublishedNews(): NewsItem[] {
+    return this.getNews().filter(n => n.status === 'published');
+  },
+  saveNewsItem(item: Omit<NewsItem, 'id'> & { id?: string }, adminName: string): NewsItem {
+    const all = this.getNews();
+    if (item.id) {
+      const idx = all.findIndex(n => n.id === item.id);
+      if (idx !== -1) {
+        all[idx] = { ...all[idx], ...item } as NewsItem;
+        saveToStorage(KEYS.NEWS, all);
+        this.addAuditLog('Edit Berita', 'Berita & Pengumuman', adminName, `Memperbarui artikel "${item.title}"`);
+        return all[idx];
+      }
+    }
+    const newItem: NewsItem = {
+      ...item,
+      id: `news-${Date.now()}`
+    };
+    all.unshift(newItem);
+    saveToStorage(KEYS.NEWS, all);
+    this.addAuditLog('Tambah Berita', 'Berita & Pengumuman', adminName, `Menambahkan artikel baru "${item.title}"`);
+    return newItem;
+  },
+  deleteNewsItem(id: string, adminName: string): void {
+    const all = this.getNews();
+    const target = all.find(n => n.id === id);
+    const filtered = all.filter(n => n.id !== id);
+    saveToStorage(KEYS.NEWS, filtered);
+    if (target) {
+      this.addAuditLog('Hapus Berita', 'Berita & Pengumuman', adminName, `Menghapus artikel "${target.title}"`);
+    }
+  },
+
+  // --- Agenda ---
+  getAgenda(): AgendaItem[] {
+    return getFromStorage<AgendaItem[]>(KEYS.AGENDA, INITIAL_AGENDA);
+  },
+  saveAgendaItem(item: Omit<AgendaItem, 'id'> & { id?: string }, adminName: string): AgendaItem {
+    const all = this.getAgenda();
+    if (item.id) {
+      const idx = all.findIndex(a => a.id === item.id);
+      if (idx !== -1) {
+        all[idx] = { ...all[idx], ...item } as AgendaItem;
+        saveToStorage(KEYS.AGENDA, all);
+        this.addAuditLog('Edit Agenda', 'Agenda Kegiatan', adminName, `Memperbarui agenda "${item.title}"`);
+        return all[idx];
+      }
+    }
+    const newItem: AgendaItem = {
+      ...item,
+      id: `agenda-${Date.now()}`
+    };
+    all.push(newItem);
+    // Sort by date ascending
+    all.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    saveToStorage(KEYS.AGENDA, all);
+    this.addAuditLog('Tambah Agenda', 'Agenda Kegiatan', adminName, `Menambahkan agenda baru "${item.title}"`);
+    return newItem;
+  },
+  deleteAgendaItem(id: string, adminName: string): void {
+    const all = this.getAgenda();
+    const target = all.find(a => a.id === id);
+    const filtered = all.filter(a => a.id !== id);
+    saveToStorage(KEYS.AGENDA, filtered);
+    if (target) {
+      this.addAuditLog('Hapus Agenda', 'Agenda Kegiatan', adminName, `Menghapus agenda "${target.title}"`);
+    }
+  },
+
+  // --- Achievements ---
+  getAchievements(): AchievementItem[] {
+    return getFromStorage<AchievementItem[]>(KEYS.ACHIEVEMENTS, INITIAL_ACHIEVEMENTS);
+  },
+  saveAchievementItem(item: Omit<AchievementItem, 'id'> & { id?: string }, adminName: string): AchievementItem {
+    const all = this.getAchievements();
+    if (item.id) {
+      const idx = all.findIndex(a => a.id === item.id);
+      if (idx !== -1) {
+        all[idx] = { ...all[idx], ...item } as AchievementItem;
+        saveToStorage(KEYS.ACHIEVEMENTS, all);
+        this.addAuditLog('Edit Prestasi', 'SMESA JUARA', adminName, `Memperbarui data prestasi "${item.title}"`);
+        return all[idx];
+      }
+    }
+    const newItem: AchievementItem = {
+      ...item,
+      id: `ach-${Date.now()}`
+    };
+    all.unshift(newItem);
+    saveToStorage(KEYS.ACHIEVEMENTS, all);
+    this.addAuditLog('Tambah Prestasi', 'SMESA JUARA', adminName, `Menambahkan prestasi baru "${item.title}"`);
+    return newItem;
+  },
+  deleteAchievementItem(id: string, adminName: string): void {
+    const all = this.getAchievements();
+    const target = all.find(a => a.id === id);
+    const filtered = all.filter(a => a.id !== id);
+    saveToStorage(KEYS.ACHIEVEMENTS, filtered);
+    if (target) {
+      this.addAuditLog('Hapus Prestasi', 'SMESA JUARA', adminName, `Menghapus data prestasi "${target.title}"`);
+    }
+  },
+
+  // --- Extracurriculars ---
+  getExtracurriculars(): ExtracurricularItem[] {
+    return getFromStorage<ExtracurricularItem[]>(KEYS.EXTRAS, INITIAL_EXTRACURRICULARS);
+  },
+  saveExtracurricularItem(item: Omit<ExtracurricularItem, 'id'> & { id?: string }, adminName: string): ExtracurricularItem {
+    const all = this.getExtracurriculars();
+    if (item.id) {
+      const idx = all.findIndex(e => e.id === item.id);
+      if (idx !== -1) {
+        all[idx] = { ...all[idx], ...item } as ExtracurricularItem;
+        saveToStorage(KEYS.EXTRAS, all);
+        this.addAuditLog('Edit Ekstrakurikuler', 'Katalog Ekstra', adminName, `Memperbarui ekstra "${item.name}"`);
+        return all[idx];
+      }
+    }
+    const newItem: ExtracurricularItem = {
+      ...item,
+      id: `extra-${Date.now()}`
+    };
+    all.push(newItem);
+    saveToStorage(KEYS.EXTRAS, all);
+    this.addAuditLog('Tambah Ekstrakurikuler', 'Katalog Ekstra', adminName, `Menambahkan ekstra baru "${item.name}"`);
+    return newItem;
+  },
+  deleteExtracurricularItem(id: string, adminName: string): void {
+    const all = this.getExtracurriculars();
+    const target = all.find(e => e.id === id);
+    const filtered = all.filter(e => e.id !== id);
+    saveToStorage(KEYS.EXTRAS, filtered);
+    if (target) {
+      this.addAuditLog('Hapus Ekstrakurikuler', 'Katalog Ekstra', adminName, `Menghapus ekstra "${target.name}"`);
+    }
+  },
+
+  // --- Gallery ---
+  getGallery(): GalleryItem[] {
+    return getFromStorage<GalleryItem[]>(KEYS.GALLERY, INITIAL_GALLERY);
+  },
+  saveGalleryItem(item: Omit<GalleryItem, 'id'> & { id?: string }, adminName: string): GalleryItem {
+    const all = this.getGallery();
+    if (item.id) {
+      const idx = all.findIndex(g => g.id === item.id);
+      if (idx !== -1) {
+        all[idx] = { ...all[idx], ...item } as GalleryItem;
+        saveToStorage(KEYS.GALLERY, all);
+        this.addAuditLog('Edit Galeri', 'Galeri Dokumentasi', adminName, `Memperbarui item galeri "${item.title}"`);
+        return all[idx];
+      }
+    }
+    const newItem: GalleryItem = {
+      ...item,
+      id: `gal-${Date.now()}`
+    };
+    all.unshift(newItem);
+    saveToStorage(KEYS.GALLERY, all);
+    this.addAuditLog('Tambah Galeri', 'Galeri Dokumentasi', adminName, `Menambahkan foto/video "${item.title}"`);
+    return newItem;
+  },
+  deleteGalleryItem(id: string, adminName: string): void {
+    const all = this.getGallery();
+    const target = all.find(g => g.id === id);
+    const filtered = all.filter(g => g.id !== id);
+    saveToStorage(KEYS.GALLERY, filtered);
+    if (target) {
+      this.addAuditLog('Hapus Galeri', 'Galeri Dokumentasi', adminName, `Menghapus item galeri "${target.title}"`);
+    }
+  },
+
+  // --- Aspirations ---
+  getAspirations(): StudentAspiration[] {
+    return getFromStorage<StudentAspiration[]>(KEYS.ASPIRATIONS, INITIAL_ASPIRATIONS);
+  },
+  submitAspiration(aspiration: Omit<StudentAspiration, 'id' | 'ticketNumber' | 'createdAt' | 'status'>): StudentAspiration {
+    const all = this.getAspirations();
+    const ticketNumber = `ASP-${new Date().getFullYear()}-${String(all.length + 1).padStart(3, '0')}`;
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const newItem: StudentAspiration = {
+      ...aspiration,
+      id: `asp-${Date.now()}`,
+      ticketNumber,
+      createdAt: dateStr,
+      status: 'menunggu_review'
+    };
+    all.unshift(newItem);
+    saveToStorage(KEYS.ASPIRATIONS, all);
+    return newItem;
+  },
+  moderateAspiration(id: string, status: StudentAspiration['status'], adminResponse?: string, adminName = 'Admin'): void {
+    const all = this.getAspirations();
+    const idx = all.findIndex(a => a.id === id);
+    if (idx !== -1) {
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      all[idx].status = status;
+      if (adminResponse !== undefined) {
+        all[idx].adminResponse = adminResponse;
+        all[idx].respondedAt = dateStr;
+      }
+      saveToStorage(KEYS.ASPIRATIONS, all);
+      this.addAuditLog('Moderasi Aspirasi', 'Ruang Aspirasi Siswa', adminName, `Ubah status aspirasi ${all[idx].ticketNumber} menjadi ${status}`);
+    }
+  },
+
+  // --- Contact Messages ---
+  getContactMessages(): ContactMessage[] {
+    return getFromStorage<ContactMessage[]>(KEYS.CONTACTS, INITIAL_CONTACT_MESSAGES);
+  },
+  submitContactMessage(msg: Omit<ContactMessage, 'id' | 'ticketNumber' | 'createdAt' | 'isRead' | 'status'>): ContactMessage {
+    const all = this.getContactMessages();
+    const ticketNumber = `MSG-${new Date().getFullYear()}-${String(all.length + 1).padStart(3, '0')}`;
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const newItem: ContactMessage = {
+      ...msg,
+      id: `msg-${Date.now()}`,
+      ticketNumber,
+      createdAt: dateStr,
+      isRead: false,
+      status: 'baru'
+    };
+    all.unshift(newItem);
+    saveToStorage(KEYS.CONTACTS, all);
+    return newItem;
+  },
+  updateContactStatus(id: string, status: ContactMessage['status']): void {
+    const all = this.getContactMessages();
+    const idx = all.findIndex(m => m.id === id);
+    if (idx !== -1) {
+      all[idx].status = status;
+      all[idx].isRead = true;
+      saveToStorage(KEYS.CONTACTS, all);
+    }
+  },
+
+  // --- Audit Logs ---
+  getAuditLogs(): AuditLog[] {
+    return getFromStorage<AuditLog[]>(KEYS.AUDIT_LOGS, [
+      {
+        id: 'log-1',
+        action: 'Inisialisasi Sistem',
+        module: 'Core System',
+        performedBy: 'Sistem Kesiswaan SMESA',
+        timestamp: '2026-10-15 08:00',
+        details: 'Basis data awal kesiswaan berhasil dimuat.'
+      }
+    ]);
+  },
+  addAuditLog(action: string, module: string, performedBy: string, details: string): void {
+    const logs = this.getAuditLogs();
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    logs.unshift({
+      id: `log-${Date.now()}`,
+      action,
+      module,
+      performedBy,
+      timestamp: dateStr,
+      details
+    });
+    // Keep max 100 logs
+    if (logs.length > 100) logs.pop();
+    saveToStorage(KEYS.AUDIT_LOGS, logs);
+  },
+
+  // --- Admin Session ---
+  getCurrentAdmin(): AdminUser | null {
+    return getFromStorage<AdminUser | null>(KEYS.CURRENT_ADMIN, null);
+  },
+  loginAdmin(user: AdminUser): void {
+    saveToStorage(KEYS.CURRENT_ADMIN, user);
+    this.addAuditLog('Login Admin', 'Autentikasi', user.name, `Pengguna login sebagai ${user.role}`);
+  },
+  logoutAdmin(): void {
+    const current = this.getCurrentAdmin();
+    if (current) {
+      this.addAuditLog('Logout Admin', 'Autentikasi', current.name, 'Pengguna keluar dari panel admin');
+    }
+    localStorage.removeItem(KEYS.CURRENT_ADMIN);
+  },
+
+  // Reset to initial seed
+  resetAllData(): void {
+    localStorage.clear();
+    saveToStorage(KEYS.PROFILE, INITIAL_SCHOOL_PROFILE);
+    saveToStorage(KEYS.NEWS, INITIAL_NEWS);
+    saveToStorage(KEYS.AGENDA, INITIAL_AGENDA);
+    saveToStorage(KEYS.ACHIEVEMENTS, INITIAL_ACHIEVEMENTS);
+    saveToStorage(KEYS.EXTRAS, INITIAL_EXTRACURRICULARS);
+    saveToStorage(KEYS.GALLERY, INITIAL_GALLERY);
+    saveToStorage(KEYS.ASPIRATIONS, INITIAL_ASPIRATIONS);
+    saveToStorage(KEYS.CONTACTS, INITIAL_CONTACT_MESSAGES);
+  }
+};
