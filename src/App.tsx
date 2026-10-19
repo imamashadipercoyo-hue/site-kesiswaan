@@ -31,6 +31,7 @@ import { AdminLoginModal } from './components/admin/AdminLoginModal';
 
 // Storage & Types
 import { StorageService } from './services/storageService';
+import { GoogleSheetsService } from './services/googleSheetsService';
 import { 
   AdminUser, 
   NewsItem, 
@@ -78,6 +79,21 @@ export default function App() {
     setContacts(StorageService.getContactMessages());
     setCurrentAdmin(StorageService.getCurrentAdmin());
   };
+
+  // Initialize auto-sync with Google Apps Script Web App database
+  useEffect(() => {
+    GoogleSheetsService.initAutoSync();
+
+    const handleDataMutated = (e: any) => {
+      if (e?.detail?.key === 'ALL_SYNCED') {
+        refreshData();
+      }
+    };
+    window.addEventListener('smesa_data_mutated', handleDataMutated);
+    return () => {
+      window.removeEventListener('smesa_data_mutated', handleDataMutated);
+    };
+  }, []);
 
   const handleNavigate = (tab: string) => {
     setCurrentTab(tab);

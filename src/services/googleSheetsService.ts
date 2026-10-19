@@ -20,29 +20,57 @@ export interface TableSummaryItem {
   description: string;
 }
 
+export const DEFAULT_GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzojlOs3z8KGgiHsCEHfnNVe2iriRVBWNVL5WwR3RwWuXwn9aAYI1rKKthao-Yvp9tr/exec';
+
 const CONFIG_KEY = 'smesa_googlesheets_config_v1';
 
 const DEFAULT_CONFIG: GoogleSheetsConfig = {
-  webAppUrl: '',
+  webAppUrl: DEFAULT_GAS_WEB_APP_URL,
   spreadsheetUrl: '',
   spreadsheetId: '',
-  autoSync: false,
+  autoSync: true,
   lastSyncTime: null,
   syncStatus: 'idle',
   lastErrorMessage: null
 };
+
+// Module-level auto-sync control
+let isAutoSyncListenerActive = false;
+let autoSyncDebounceTimer: any = null;
+let isCurrentlyAutoSyncing = false;
 
 export const GoogleSheetsService = {
   getSettings(): GoogleSheetsConfig {
     try {
       const saved = localStorage.getItem(CONFIG_KEY);
       if (saved) {
-        return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        const webAppUrl = (parsed.webAppUrl && typeof parsed.webAppUrl === 'string' && parsed.webAppUrl.trim().length > 0)
+          ? parsed.webAppUrl.trim()
+          : DEFAULT_GAS_WEB_APP_URL;
+        
+        return {
+          ...DEFAULT_CONFIG,
+          ...parsed,
+          webAppUrl,
+          autoSync: parsed.autoSync !== undefined ? Boolean(parsed.autoSync) : true
+        };
       }
     } catch (e) {
       console.error('Failed to load Google Sheets config:', e);
     }
+    // Save initial default configuration if not set
+    try {
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(DEFAULT_CONFIG));
+    } catch (e) {}
     return DEFAULT_CONFIG;
+  },
+
+  resetToDefaultUrl(): GoogleSheetsConfig {
+    return this.saveSettings({
+      webAppUrl: DEFAULT_GAS_WEB_APP_URL,
+      autoSync: true
+    });
   },
 
   saveSettings(settings: Partial<GoogleSheetsConfig>): GoogleSheetsConfig {
@@ -407,15 +435,68 @@ export const GoogleSheetsService = {
     }
   },
 
+  initAutoSync() {
+    if (typeof window === 'undefined') return;
+    if (isAutoSyncListenerActive) return;
+    isAutoSyncListenerActive = true;
+
+    // Listen for any mutations in localStorage across the application
+    window.addEventListener('smesa_data_mutated', (event: any) => {
+      const detail = event?.detail;
+      // Do not sync if triggered by pull/import or if currently syncing
+      if (detail?.key === 'ALL_SYNCED' || isCurrentlyAutoSyncing) {
+        return;
+      }
+
+      const config = this.getSettings();
+      if (!config.autoSync || !config.webAppUrl) {
+        return;
+      }
+
+      if (autoSyncDebounceTimer) {
+        clearTimeout(autoSyncDebounceTimer);
+      }
+
+      // Debounce auto-sync by 1.2s to batch consecutive edits
+      autoSyncDebounceTimer = setTimeout(async () => {
+        if (isCurrentlyAutoSyncing) return;
+        isCurrentlyAutoSyncing = true;
+        try {
+          await this.syncAllToGoogleSheets();
+        } catch (e) {
+          console.warn('Auto-sync execution error:', e);
+        } finally {
+          isCurrentlyAutoSyncing = false;
+        }
+      }, 1200);
+    });
+
+    // Run connection test in background once on load
+    const currentConfig = this.getSettings();
+    if (currentConfig.autoSync && currentConfig.webAppUrl) {
+      setTimeout(() => {
+        this.testConnection(currentConfig.webAppUrl).catch(() => {});
+      }, 1500);
+    }
+  },
+
   triggerAutoSync() {
     const config = this.getSettings();
     if (config.autoSync && config.webAppUrl) {
-      // Run non-blocking background sync
-      setTimeout(() => {
-        this.syncAllToGoogleSheets().catch(err => {
+      if (autoSyncDebounceTimer) {
+        clearTimeout(autoSyncDebounceTimer);
+      }
+      autoSyncDebounceTimer = setTimeout(async () => {
+        if (isCurrentlyAutoSyncing) return;
+        isCurrentlyAutoSyncing = true;
+        try {
+          await this.syncAllToGoogleSheets();
+        } catch (err) {
           console.warn('Auto-sync to Google Sheets failed:', err);
-        });
-      }, 500);
+        } finally {
+          isCurrentlyAutoSyncing = false;
+        }
+      }, 800);
     }
   },
 

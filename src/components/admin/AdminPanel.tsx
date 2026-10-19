@@ -66,7 +66,7 @@ import {
   PublicDocumentItem
 } from '../../types';
 import { StorageService, DEFAULT_ADMINS } from '../../services/storageService';
-import { GoogleSheetsService, TableSummaryItem, GoogleSheetsConfig } from '../../services/googleSheetsService';
+import { GoogleSheetsService, TableSummaryItem, GoogleSheetsConfig, DEFAULT_GAS_WEB_APP_URL } from '../../services/googleSheetsService';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../../backend/googleAppsScriptCode';
 
 interface AdminPanelProps {
@@ -2838,10 +2838,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-slate-300 font-bold mb-1">
-                          URL Google Apps Script Web App (Wajib):
-                        </label>
-                        <div className="space-y-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-slate-300 font-bold">
+                            URL Google Apps Script Web App (Wajib):
+                          </label>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800/40">
+                            ✓ URL Bawaan Sistem Tertanam (Aktif)
+                          </span>
+                        </div>
+                        <div className="space-y-1.5">
                           <input
                             type="url"
                             required
@@ -2850,9 +2855,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             placeholder="https://script.google.com/macros/s/AKfycb.../exec"
                             className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                           />
-                          <p className="text-[11px] text-slate-400">
-                            Pastikan URL berakhiran <code className="text-amber-300 bg-slate-950 px-1 py-0.5 rounded">/exec</code> dan izin akses disetel ke <strong>"Anyone" (Siapa saja)</strong>.
-                          </p>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-slate-400">
+                            <span>
+                              Endpoint terhubung ke: <code className="text-amber-300 bg-slate-950 px-1 py-0.5 rounded">/exec</code> (Akses: <strong>Anyone</strong>)
+                            </span>
+                            {webAppInput !== DEFAULT_GAS_WEB_APP_URL && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setWebAppInput(DEFAULT_GAS_WEB_APP_URL);
+                                  setAutoSyncInput(true);
+                                  const updated = GoogleSheetsService.resetToDefaultUrl();
+                                  setSheetsConfig(updated);
+                                  showFeedback('URL dikembalikan ke URL bawaan produksi & Auto-Sync aktif!');
+                                }}
+                                className="text-amber-400 hover:text-amber-300 underline font-bold cursor-pointer"
+                              >
+                                Pulihkan URL Bawaan
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 

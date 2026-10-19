@@ -50,11 +50,14 @@ Dokumentasi ini menjelaskan integrasi database sekolah menggunakan **Google Shee
 
 ---
 
-## 3. Menghubungkan ke Panel Admin Kesiswaan
+## 3. URL Web App Produksi yang Tertanam (Aktif)
 
-1. Masuk ke **Panel Admin Kesiswaan** SMK Negeri 1 Jember.
-2. Buka menu **Database & Google Sheets**.
-3. Tempelkan URL Aplikasi Web ke kolom input **URL Google Apps Script**.
-4. Klik tombol **Tes Koneksi** untuk memverifikasi sambungan (akan muncul indikator hijau *Terhubung*).
-5. Klik tombol **Sinkronkan Semua Data ke Google Sheets** untuk membuat 17 lembar tabel secara otomatis beserta seluruh data awal kesiswaan.
-6. Aktifkan opsi **Auto-Sync Otomatis** agar setiap ada pengisian aspirasi siswa, warta baru, agenda baru, atau dokumen baru, database di Google Sheets otomatis terbarui!
+Aplikasi portal kesiswaan SMESA telah dikonfigurasi dengan URL Web App produksi bawaan:
+```
+https://script.google.com/macros/s/AKfycbzojlOs3z8KGgiHsCEHfnNVe2iriRVBWNVL5WwR3RwWuXwn9aAYI1rKKthao-Yvp9tr/exec
+```
+
+Dengan URL ini tertanam:
+- Fitur **Auto-Sync Otomatis** aktif secara default.
+- Setiap kali ada penambahan atau pengubahan data (berita, agenda, prestasi, aspirasi siswa, pesan buku tamu, dll), data akan otomatis disinkronkan secara mulus ke Google Sheets di latar belakang.
+- Panel Admin menyediakan tombol **Tes Koneksi**, **Kirim ke Sheets (Push)**, **Tarik dari Sheets (Pull)**, dan **Inisialisasi Lembar Spreadsheet**.

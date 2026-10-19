@@ -197,7 +197,7 @@ function initAllTables() {
 
   return {
     status: 'success',
-    message: 'Seluruh 17 tabel database kesiswaan berhasil diinisialisasi.',
+    message: 'Seluruh 18 tabel database kesiswaan berhasil diinisialisasi.',
     tablesCount: Object.keys(TABLES).length
   };
 }
