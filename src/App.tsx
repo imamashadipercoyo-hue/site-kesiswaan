@@ -120,123 +120,125 @@ export default function App() {
         runningAnnouncement={profile.runningAnnouncement}
       />
 
-      {/* Main Content Pages */}
+      {/* Main Content Pages with smooth fade-in transition */}
       <main className="flex-1">
-        {currentTab === 'beranda' && (
-          <div>
-            <HeroSection
-              onExploreAgenda={() => handleNavigate('agenda')}
-              onExploreAchievements={() => handleNavigate('prestasi')}
-              onNavigate={handleNavigate}
-            />
-            <WakaGreeting
+        <div key={currentTab} className="animate-page-fade">
+          {currentTab === 'beranda' && (
+            <div>
+              <HeroSection
+                onExploreAgenda={() => handleNavigate('agenda')}
+                onExploreAchievements={() => handleNavigate('prestasi')}
+                onNavigate={handleNavigate}
+              />
+              <WakaGreeting
+                profile={profile}
+                onExploreProfile={() => handleNavigate('profil')}
+              />
+              <FlagshipPrograms onNavigate={handleNavigate} />
+              <LatestNewsSection
+                news={news}
+                onSelectNews={(article) => {
+                  setSelectedNewsArticle(article);
+                  handleNavigate('berita');
+                }}
+                onExploreAll={() => handleNavigate('berita')}
+              />
+              <FeaturedAchievements
+                achievements={achievements}
+                onSelectAchievement={(ach) => {
+                  setSelectedAchievementItem(ach);
+                  handleNavigate('prestasi');
+                }}
+                onExploreAll={() => handleNavigate('prestasi')}
+              />
+              <UpcomingAgendaSection
+                agenda={agenda}
+                onSelectAgenda={(ag) => {
+                  setSelectedAgendaItem(ag);
+                  handleNavigate('agenda');
+                }}
+                onExploreAll={() => handleNavigate('agenda')}
+              />
+              <ExtracurricularPreview
+                extras={extras}
+                onSelectExtra={(ex) => {
+                  setSelectedExtraItem(ex);
+                  handleNavigate('ekstra');
+                }}
+                onExploreAll={() => handleNavigate('ekstra')}
+              />
+              <CtaBanner onNavigate={handleNavigate} />
+            </div>
+          )}
+
+          {currentTab === 'profil' && (
+            <ProfilePage
               profile={profile}
-              onExploreProfile={() => handleNavigate('profil')}
+              onNavigate={handleNavigate}
+              currentAdmin={currentAdmin}
+              onOpenLoginModal={() => setShowAdminLoginModal(true)}
+              onOpenAdminPanel={() => setShowAdminPanel(true)}
+              onDataChanged={refreshData}
             />
-            <FlagshipPrograms onNavigate={handleNavigate} />
-            <LatestNewsSection
+          )}
+
+          {currentTab === 'berita' && (
+            <NewsPage
               news={news}
-              onSelectNews={(article) => {
-                setSelectedNewsArticle(article);
-                handleNavigate('berita');
-              }}
-              onExploreAll={() => handleNavigate('berita')}
+              selectedArticle={selectedNewsArticle}
+              onSelectArticle={setSelectedNewsArticle}
             />
-            <FeaturedAchievements
-              achievements={achievements}
-              onSelectAchievement={(ach) => {
-                setSelectedAchievementItem(ach);
-                handleNavigate('prestasi');
-              }}
-              onExploreAll={() => handleNavigate('prestasi')}
-            />
-            <UpcomingAgendaSection
+          )}
+
+          {currentTab === 'agenda' && (
+            <AgendaPage
               agenda={agenda}
-              onSelectAgenda={(ag) => {
-                setSelectedAgendaItem(ag);
-                handleNavigate('agenda');
-              }}
-              onExploreAll={() => handleNavigate('agenda')}
+              selectedAgenda={selectedAgendaItem}
+              onSelectAgenda={setSelectedAgendaItem}
             />
-            <ExtracurricularPreview
+          )}
+
+          {currentTab === 'prestasi' && (
+            <AchievementsPage
+              achievements={achievements}
+              selectedAchievement={selectedAchievementItem}
+              onSelectAchievement={setSelectedAchievementItem}
+            />
+          )}
+
+          {currentTab === 'osis-mpk' && (
+            <OsisMpkPage
+              aspirations={aspirations}
+              onAspirationSubmitted={refreshData}
+              currentAdmin={currentAdmin}
+              onOpenLoginModal={() => setShowAdminLoginModal(true)}
+              onDataChanged={refreshData}
+            />
+          )}
+
+          {currentTab === 'ekstra' && (
+            <ExtracurricularPage
               extras={extras}
-              onSelectExtra={(ex) => {
-                setSelectedExtraItem(ex);
-                handleNavigate('ekstra');
-              }}
-              onExploreAll={() => handleNavigate('ekstra')}
+              selectedExtra={selectedExtraItem}
+              onSelectExtra={setSelectedExtraItem}
             />
-            <CtaBanner onNavigate={handleNavigate} />
-          </div>
-        )}
+          )}
 
-        {currentTab === 'profil' && (
-          <ProfilePage
-            profile={profile}
-            onNavigate={handleNavigate}
-            currentAdmin={currentAdmin}
-            onOpenLoginModal={() => setShowAdminLoginModal(true)}
-            onOpenAdminPanel={() => setShowAdminPanel(true)}
-            onDataChanged={refreshData}
-          />
-        )}
+          {currentTab === 'galeri' && (
+            <GalleryPage
+              gallery={gallery}
+              currentAdmin={currentAdmin}
+              onOpenLoginModal={() => setShowAdminLoginModal(true)}
+              onDataChanged={refreshData}
+            />
+          )}
 
-        {currentTab === 'berita' && (
-          <NewsPage
-            news={news}
-            selectedArticle={selectedNewsArticle}
-            onSelectArticle={setSelectedNewsArticle}
-          />
-        )}
-
-        {currentTab === 'agenda' && (
-          <AgendaPage
-            agenda={agenda}
-            selectedAgenda={selectedAgendaItem}
-            onSelectAgenda={setSelectedAgendaItem}
-          />
-        )}
-
-        {currentTab === 'prestasi' && (
-          <AchievementsPage
-            achievements={achievements}
-            selectedAchievement={selectedAchievementItem}
-            onSelectAchievement={setSelectedAchievementItem}
-          />
-        )}
-
-        {currentTab === 'osis-mpk' && (
-          <OsisMpkPage
-            aspirations={aspirations}
-            onAspirationSubmitted={refreshData}
-            currentAdmin={currentAdmin}
-            onOpenLoginModal={() => setShowAdminLoginModal(true)}
-            onDataChanged={refreshData}
-          />
-        )}
-
-        {currentTab === 'ekstra' && (
-          <ExtracurricularPage
-            extras={extras}
-            selectedExtra={selectedExtraItem}
-            onSelectExtra={setSelectedExtraItem}
-          />
-        )}
-
-        {currentTab === 'galeri' && (
-          <GalleryPage
-            gallery={gallery}
-            currentAdmin={currentAdmin}
-            onOpenLoginModal={() => setShowAdminLoginModal(true)}
-            onDataChanged={refreshData}
-          />
-        )}
-
-        {currentTab === 'kontak' && (
-          <ContactPage
-            onMessageSent={refreshData}
-          />
-        )}
+          {currentTab === 'kontak' && (
+            <ContactPage
+              onMessageSent={refreshData}
+            />
+          )}
+        </div>
       </main>
 
       {/* Footer */}

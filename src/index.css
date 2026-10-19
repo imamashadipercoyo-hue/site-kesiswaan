@@ -20,6 +20,17 @@
   }
 }
 
+@keyframes pageFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-fadeInDown {
   animation: fadeInDown 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -28,9 +39,15 @@
   animation: pulseSubtle 4s ease-in-out infinite;
 }
 
+.animate-page-fade {
+  animation: pageFadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fadeInDown,
-  .animate-pulse-subtle {
+  .animate-pulse-subtle,
+  .animate-page-fade {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
