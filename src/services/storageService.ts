@@ -108,6 +108,9 @@ function getFromStorage<T>(key: string, defaultValue: T): T {
 function saveToStorage<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('smesa_data_mutated', { detail: { key } }));
+    }
   } catch (e) {
     console.error(`Error saving ${key} to localStorage:`, e);
   }

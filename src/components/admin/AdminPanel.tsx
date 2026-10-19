@@ -33,7 +33,19 @@ import {
   Building2,
   Download,
   UserPlus,
-  BookOpen
+  BookOpen,
+  ChevronRight,
+  ChevronDown,
+  ArrowRight,
+  Database,
+  FileSpreadsheet,
+  CloudUpload,
+  CloudDownload,
+  Copy,
+  Code2,
+  Table,
+  Layers,
+  Search
 } from 'lucide-react';
 import { SchoolLogo } from '../common/SchoolLogo';
 import { 
@@ -54,6 +66,8 @@ import {
   PublicDocumentItem
 } from '../../types';
 import { StorageService, DEFAULT_ADMINS } from '../../services/storageService';
+import { GoogleSheetsService, TableSummaryItem, GoogleSheetsConfig } from '../../services/googleSheetsService';
+import { GOOGLE_APPS_SCRIPT_CODE } from '../../backend/googleAppsScriptCode';
 
 interface AdminPanelProps {
   currentAdmin: AdminUser;
@@ -72,6 +86,7 @@ interface AdminPanelProps {
 
 type AdminTab = 
   | 'dashboard'
+  | 'database_sheets'
   | 'berita'
   | 'agenda'
   | 'prestasi'
@@ -144,6 +159,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [revealedPasswords, setRevealedPasswords] = useState<{ [id: string]: boolean }>({});
 
+  // Google Sheets Integration State
+  const [sheetsConfig, setSheetsConfig] = useState<GoogleSheetsConfig>(() => GoogleSheetsService.getSettings());
+  const [sheetsSubTab, setSheetsSubTab] = useState<'overview' | 'config' | 'script'>('overview');
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isSyncingSheets, setIsSyncingSheets] = useState(false);
+  const [copyScriptSuccess, setCopyScriptSuccess] = useState(false);
+  const [previewTable, setPreviewTable] = useState<string | null>(null);
+  const [webAppInput, setWebAppInput] = useState(sheetsConfig.webAppUrl);
+  const [spreadsheetUrlInput, setSpreadsheetUrlInput] = useState(sheetsConfig.spreadsheetUrl || '');
+  const [autoSyncInput, setAutoSyncInput] = useState(sheetsConfig.autoSync);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; details?: any } | null>(null);
+
   // News Modal / Form States
   const [editingNews, setEditingNews] = useState<Partial<NewsItem> | null>(null);
   const [showNewsModal, setShowNewsModal] = useState(false);
@@ -177,6 +204,100 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const showFeedback = (msg: string) => {
     setFeedbackMsg(msg);
     setTimeout(() => setFeedbackMsg(null), 3500);
+  };
+
+  const [tableSearchQuery, setTableSearchQuery] = useState('');
+  const [tableCategoryFilter, setTableCategoryFilter] = useState('Semua');
+
+  // Google Sheets Handlers
+  const handleSaveSheetsConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updated = GoogleSheetsService.saveSettings({
+      webAppUrl: webAppInput.trim(),
+      spreadsheetUrl: spreadsheetUrlInput.trim(),
+      autoSync: autoSyncInput
+    });
+    setSheetsConfig(updated);
+    showFeedback('Pengaturan integrasi Google Sheets berhasil disimpan.');
+  };
+
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    setTestResult(null);
+    try {
+      const res = await GoogleSheetsService.testConnection(webAppInput.trim());
+      setTestResult(res);
+      setSheetsConfig(GoogleSheetsService.getSettings());
+      if (res.success) {
+        showFeedback(res.message);
+      } else {
+        alert(res.message);
+      }
+    } catch (err: any) {
+      setTestResult({ success: false, message: err.message || 'Gagal tes koneksi' });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
+  const handleSyncToSheets = async () => {
+    setIsSyncingSheets(true);
+    try {
+      const res = await GoogleSheetsService.syncAllToGoogleSheets();
+      setSheetsConfig(GoogleSheetsService.getSettings());
+      if (res.success) {
+        showFeedback(res.message);
+      } else {
+        alert(res.message);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Gagal menyinkronkan data ke Google Sheets');
+    } finally {
+      setIsSyncingSheets(false);
+    }
+  };
+
+  const handleSyncFromSheets = async () => {
+    if (!confirm('Tarik seluruh data dari Google Sheets? Data lokal saat ini akan diperbarui sesuai data di Google Sheets.')) return;
+    setIsSyncingSheets(true);
+    try {
+      const res = await GoogleSheetsService.syncAllFromGoogleSheets();
+      setSheetsConfig(GoogleSheetsService.getSettings());
+      if (res.success) {
+        onDataChanged();
+        showFeedback(res.message);
+      } else {
+        alert(res.message);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Gagal menarik data dari Google Sheets');
+    } finally {
+      setIsSyncingSheets(false);
+    }
+  };
+
+  const handleInitSpreadsheet = async () => {
+    if (!confirm('Inisialisasi 18 tabel pada Google Spreadsheet? Ini akan membuat lembar tabel dan header terformat.')) return;
+    setIsSyncingSheets(true);
+    try {
+      const res = await GoogleSheetsService.initSpreadsheet(webAppInput.trim());
+      if (res.success) {
+        showFeedback(res.message);
+      } else {
+        alert(res.message);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Gagal inisialisasi tabel spreadsheet');
+    } finally {
+      setIsSyncingSheets(false);
+    }
+  };
+
+  const handleCopyGasScript = () => {
+    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
+    setCopyScriptSuccess(true);
+    showFeedback('Seluruh kode Google Apps Script (Code.gs) berhasil disalin ke clipboard!');
+    setTimeout(() => setCopyScriptSuccess(false), 3000);
   };
 
   // Profile General Save (Gambaran Umum, Peran, Visi Misi, Sambutan)
@@ -593,7 +714,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <nav className="space-y-1 text-xs font-semibold">
             {[
               { id: 'dashboard', label: 'Dashboard Ikhtisar', icon: LayoutDashboard },
+              { id: 'database_sheets', label: 'Database & Google Sheets', icon: Database, badgeText: '18 Tabel' },
               { id: 'users', label: `Manajemen Akun (${adminAccounts.length})`, icon: Users },
+              { id: 'profil', label: 'Profil Kesiswaan (4 Pilar)', icon: Building2 },
               { id: 'berita', label: `Berita & Warta (${news.length})`, icon: Newspaper },
               { id: 'agenda', label: `Agenda Siswa (${agenda.length})`, icon: Calendar },
               { id: 'prestasi', label: `SMESA JUARA (${achievements.length})`, icon: Trophy },
@@ -601,11 +724,102 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               { id: 'osis', label: 'OSIS & MPK SMESA', icon: Users },
               { id: 'aspirasi', label: `Aspirasi Siswa (${pendingAspirationsCount} Baru)`, icon: MessageSquare, badge: pendingAspirationsCount },
               { id: 'kontak', label: `Pesan Masuk (${unreadMessagesCount} Baru)`, icon: Mail, badge: unreadMessagesCount },
-              { id: 'profil', label: 'Profil Kesiswaan (4 Menu)', icon: Building2 },
               { id: 'audit', label: 'Log Riwayat Audit', icon: History }
             ].map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
+              
+              if (item.id === 'profil') {
+                return (
+                  <div key={item.id} className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('profil')}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-blue-900/60 text-amber-400 font-bold border border-blue-700/50'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon className="w-4 h-4 text-amber-400" />
+                        <span>{item.label}</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-800/40">
+                        4 Menu
+                      </span>
+                    </button>
+
+                    {/* 4 Pilar Sub-items directly in sidebar */}
+                    <div className="pl-4 pr-1 space-y-0.5 border-l-2 border-slate-800 ml-3.5 my-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('profil');
+                          setProfileSubTab('gambaran');
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-md text-[11px] flex items-center justify-between transition-colors cursor-pointer ${
+                          isActive && profileSubTab === 'gambaran'
+                            ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                        }`}
+                      >
+                        <span className="truncate">1. Gambaran & Peran</span>
+                        {isActive && profileSubTab === 'gambaran' && <ChevronRight className="w-3 h-3 text-amber-400 shrink-0" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('profil');
+                          setProfileSubTab('programs');
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-md text-[11px] flex items-center justify-between transition-colors cursor-pointer ${
+                          isActive && profileSubTab === 'programs'
+                            ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                        }`}
+                      >
+                        <span className="truncate">2. Agenda Proker ({(profile.annualPrograms || []).length})</span>
+                        {isActive && profileSubTab === 'programs' && <ChevronRight className="w-3 h-3 text-amber-400 shrink-0" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('profil');
+                          setProfileSubTab('struktur');
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-md text-[11px] flex items-center justify-between transition-colors cursor-pointer ${
+                          isActive && profileSubTab === 'struktur'
+                            ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                        }`}
+                      >
+                        <span className="truncate">3. Struktur ({(profile.organizationalStructure || []).length})</span>
+                        {isActive && profileSubTab === 'struktur' && <ChevronRight className="w-3 h-3 text-amber-400 shrink-0" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('profil');
+                          setProfileSubTab('dokumen');
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-md text-[11px] flex items-center justify-between transition-colors cursor-pointer ${
+                          isActive && profileSubTab === 'dokumen'
+                            ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                        }`}
+                      >
+                        <span className="truncate">4. Unduhan ({(profile.publicDocuments || []).length})</span>
+                        {isActive && profileSubTab === 'dokumen' && <ChevronRight className="w-3 h-3 text-amber-400 shrink-0" />}
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <button
                   key={item.id}
@@ -617,10 +831,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4 text-amber-400" />
                     <span>{item.label}</span>
                   </div>
-                  {item.badge && item.badge > 0 ? (
+                  {item.badgeText ? (
+                    <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                      {item.badgeText}
+                    </span>
+                  ) : item.badge && item.badge > 0 ? (
                     <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] flex items-center justify-center">
                       {item.badge}
                     </span>
@@ -766,6 +984,208 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <p className="text-slate-400 line-clamp-2">{msg.message}</p>
                       </div>
                     ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 PILAR UTAMA PENGELOLAAN PROFIL KESISWAAN */}
+              <div className="bg-slate-800/80 rounded-xl border border-slate-700 p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-4">
+                  <div>
+                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-amber-400" />
+                      <span>Pengelolaan Konten Profil Kesiswaan (4 Pilar Utama)</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Pusat kontrol konten profil resmi kesiswaan SMK Negeri 1 Jember khusus akun Administrator dan Tim Kesiswaan.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('profil');
+                      setProfileSubTab('gambaran');
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
+                  >
+                    <span>Buka Semua Pilar</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Pilar 1 */}
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3 hover:border-amber-500/30 transition-all">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded">
+                          Pilar 1
+                        </span>
+                        <Building2 className="w-4 h-4 text-amber-400" />
+                      </div>
+                      <h4 className="text-sm font-bold text-white">Gambaran & Peran</h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Overview, 5 peran tanggung jawab, sambutan Waka, visi misi, & budaya 5S.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('profil');
+                        setProfileSubTab('gambaran');
+                      }}
+                      className="w-full text-center text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 py-1.5 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Ubah Konten
+                    </button>
+                  </div>
+
+                  {/* Pilar 2 */}
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3 hover:border-amber-500/30 transition-all">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-950/80 px-2 py-0.5 rounded">
+                          Pilar 2
+                        </span>
+                        <Calendar className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <h4 className="text-sm font-bold text-white">Agenda & Proker</h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        {(profile.annualPrograms || []).length} agenda program tahunan: MPLS, LDKS, apel disiplin, dll.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('profil');
+                        setProfileSubTab('programs');
+                      }}
+                      className="w-full text-center text-xs font-bold text-blue-200 bg-blue-900/60 hover:bg-blue-900 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-700/60"
+                    >
+                      Kelola Agenda ({(profile.annualPrograms || []).length})
+                    </button>
+                  </div>
+
+                  {/* Pilar 3 */}
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3 hover:border-amber-500/30 transition-all">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded">
+                          Pilar 3
+                        </span>
+                        <Users className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <h4 className="text-sm font-bold text-white">Struktur Organisasi</h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        {(profile.organizationalStructure || []).length} pembina & staf fungsionaris kesiswaan SMESA.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('profil');
+                        setProfileSubTab('struktur');
+                      }}
+                      className="w-full text-center text-xs font-bold text-emerald-200 bg-emerald-900/60 hover:bg-emerald-900 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-700/60"
+                    >
+                      Kelola Struktur ({(profile.organizationalStructure || []).length})
+                    </button>
+                  </div>
+
+                  {/* Pilar 4 */}
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3 hover:border-amber-500/30 transition-all">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 bg-purple-950/80 px-2 py-0.5 rounded">
+                          Pilar 4
+                        </span>
+                        <FileText className="w-4 h-4 text-purple-400" />
+                      </div>
+                      <h4 className="text-sm font-bold text-white">Unduhan Dokumen</h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        {(profile.publicDocuments || []).length} berkas resmi: tata tertib, SOP dispensasi, formulir.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('profil');
+                        setProfileSubTab('dokumen');
+                      }}
+                      className="w-full text-center text-xs font-bold text-purple-200 bg-purple-900/60 hover:bg-purple-900 py-1.5 rounded-lg transition-colors cursor-pointer border border-purple-700/60"
+                    >
+                      Kelola Berkas ({(profile.publicDocuments || []).length})
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* GOOGLE SHEETS & DATABASE STATUS CARD IN DASHBOARD */}
+              <div className="bg-gradient-to-r from-blue-950/80 via-slate-900 to-slate-900 rounded-xl border border-blue-800/60 p-6 space-y-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-blue-900/60 border border-blue-700/60 text-[11px] font-bold text-amber-300">
+                      <Database className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Integrasi Database Google Sheets & Backend Apps Script</span>
+                    </div>
+                    <h3 className="text-base font-bold text-white">
+                      18 Tabel Database Terkoneksi (Skema Relasional & Cloud Spreadsheet)
+                    </h3>
+                    <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+                      Seluruh data profil kesiswaan, program kerja, struktur, warta, agenda, prestasi, 22 ekskul, aspirasi, pesan tamu, hingga akun pengelola tersimpan dalam struktur tabel terstandar dengan integrasi REST API tanpa server Google Apps Script.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('database_sheets');
+                        setSheetsSubTab('overview');
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Table className="w-4 h-4" />
+                      <span>Buka Pusat Database</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSyncToSheets}
+                      disabled={isSyncingSheets}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 bg-blue-900/80 hover:bg-blue-800 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer border border-blue-700 disabled:opacity-50"
+                    >
+                      <CloudUpload className="w-4 h-4 text-amber-400" />
+                      <span>{isSyncingSheets ? 'Menyinkronkan...' : 'Sinkronkan ke Sheets'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800 text-xs">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Status Sambungan:</span>
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <span className={`w-2 h-2 rounded-full ${sheetsConfig.syncStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : sheetsConfig.syncStatus === 'syncing' ? 'bg-blue-400 animate-spin' : sheetsConfig.syncStatus === 'error' ? 'bg-red-400' : 'bg-slate-500'}`} />
+                      <span className={sheetsConfig.syncStatus === 'connected' ? 'text-emerald-400' : sheetsConfig.syncStatus === 'syncing' ? 'text-blue-300' : sheetsConfig.syncStatus === 'error' ? 'text-red-400' : 'text-slate-400'}>
+                        {sheetsConfig.syncStatus === 'connected' ? 'Terhubung (Online)' : sheetsConfig.syncStatus === 'syncing' ? 'Sinkronisasi...' : sheetsConfig.syncStatus === 'error' ? 'Perlu Dikonfigurasi' : 'Siap Dihubungkan'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Jumlah Lembar Tabel:</span>
+                    <div className="text-white font-bold">18 Tabel Terstruktur</div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Terakhir Sinkron:</span>
+                    <div className="text-slate-300 font-medium truncate">{sheetsConfig.lastSyncTime || 'Belum pernah'}</div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Mode Auto-Sync:</span>
+                    <div className={sheetsConfig.autoSync ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
+                      {sheetsConfig.autoSync ? 'Aktif Otomatis' : 'Manual Push/Pull'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2090,6 +2510,582 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
           )}
+
+          {/* TAB 9: DATABASE & INTEGRASI GOOGLE SHEETS */}
+          {activeTab === 'database_sheets' && (
+            <div className="space-y-6">
+              {/* Header Title & Actions */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Database className="w-5 h-5 text-amber-400" />
+                    <span>Pusat Database & Integrasi Google Sheets Backend</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Kelola 18 tabel database kesiswaan SMESA, sinkronisasi cloud dua arah dengan Google Sheets via REST API serverless Google Apps Script.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleTestConnection}
+                    disabled={isTestingConnection}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isTestingConnection ? 'animate-spin text-amber-400' : 'text-slate-400'}`} />
+                    <span>{isTestingConnection ? 'Menguji...' : 'Tes Koneksi'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSyncToSheets}
+                    disabled={isSyncingSheets}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <CloudUpload className="w-3.5 h-3.5" />
+                    <span>{isSyncingSheets ? 'Menyinkronkan...' : 'Kirim ke Sheets (Push)'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSyncFromSheets}
+                    disabled={isSyncingSheets}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer border border-blue-700 disabled:opacity-50"
+                  >
+                    <CloudDownload className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Tarik dari Sheets (Pull)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => GoogleSheetsService.exportAllDatabaseToSql()}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition-colors cursor-pointer"
+                    title="Unduh seluruh database dalam format SQL DDL/DML"
+                  >
+                    <Download className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Ekspor SQL</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => GoogleSheetsService.exportAllDatabaseToJson()}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition-colors cursor-pointer"
+                    title="Unduh seluruh database dalam format JSON"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Ekspor JSON</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Banner */}
+              <div className="bg-slate-800/80 rounded-xl border border-slate-700 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 rounded-lg ${
+                    sheetsConfig.syncStatus === 'connected' ? 'bg-emerald-950/80 border border-emerald-700/60 text-emerald-400' :
+                    sheetsConfig.syncStatus === 'syncing' ? 'bg-blue-950/80 border border-blue-700/60 text-blue-300' :
+                    sheetsConfig.syncStatus === 'error' ? 'bg-red-950/80 border border-red-700/60 text-red-400' :
+                    'bg-slate-900 border border-slate-700 text-slate-400'
+                  }`}>
+                    <Database className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-white">Status Koneksi Google Sheets:</span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                        sheetsConfig.syncStatus === 'connected' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
+                        sheetsConfig.syncStatus === 'syncing' ? 'bg-blue-950 text-blue-300 border border-blue-800' :
+                        sheetsConfig.syncStatus === 'error' ? 'bg-red-950 text-red-300 border border-red-800' :
+                        'bg-slate-900 text-slate-400 border border-slate-700'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          sheetsConfig.syncStatus === 'connected' ? 'bg-emerald-400 animate-pulse' :
+                          sheetsConfig.syncStatus === 'syncing' ? 'bg-blue-400 animate-spin' :
+                          sheetsConfig.syncStatus === 'error' ? 'bg-red-400' : 'bg-slate-500'
+                        }`} />
+                        {sheetsConfig.syncStatus === 'connected' ? 'Terhubung (Online)' :
+                         sheetsConfig.syncStatus === 'syncing' ? 'Sedang Sinkronisasi...' :
+                         sheetsConfig.syncStatus === 'error' ? 'Error / Belum Terhubung' : 'Idle (Siap Digunakan)'}
+                      </span>
+                    </div>
+                    <p className="text-slate-400 text-[11px] mt-0.5">
+                      {sheetsConfig.webAppUrl 
+                        ? `Endpoint: ${sheetsConfig.webAppUrl.slice(0, 50)}...` 
+                        : 'URL Web App belum diisi. Masukkan URL pada tab "Pengaturan & Web App URL" untuk mengaktifkan koneksi.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 text-right">
+                  <div className="text-[11px] text-slate-400">
+                    <div>Terakhir Sinkron: <strong className="text-slate-200">{sheetsConfig.lastSyncTime || 'Belum pernah'}</strong></div>
+                    <div>Auto-Sync: <strong className={sheetsConfig.autoSync ? 'text-emerald-400' : 'text-slate-400'}>{sheetsConfig.autoSync ? 'Aktif' : 'Nonaktif'}</strong></div>
+                  </div>
+                  {sheetsConfig.spreadsheetUrl && (
+                    <a
+                      href={sheetsConfig.spreadsheetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-bold text-amber-400 hover:text-white bg-slate-900 hover:bg-slate-800 px-3 py-2 rounded-lg border border-slate-700 transition-colors"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Buka Sheet</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Sub-Tabs Switcher */}
+              <div className="flex flex-wrap items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setSheetsSubTab('overview')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold transition-colors cursor-pointer ${
+                    sheetsSubTab === 'overview'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  }`}
+                >
+                  <Table className="w-4 h-4" />
+                  <span>1. Ikhtisar 18 Tabel Database</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSheetsSubTab('config')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold transition-colors cursor-pointer ${
+                    sheetsSubTab === 'config'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>2. Pengaturan & Web App URL</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSheetsSubTab('script')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold transition-colors cursor-pointer ${
+                    sheetsSubTab === 'script'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  }`}
+                >
+                  <Code2 className="w-4 h-4" />
+                  <span>3. Kode Apps Script (Code.gs) & Panduan Setup</span>
+                </button>
+              </div>
+
+              {/* SUBTAB 1: IKHTISAR 18 TABEL DATABASE */}
+              {sheetsSubTab === 'overview' && (
+                <div className="space-y-5">
+                  {/* Stats Overview */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                    <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-1">
+                      <span className="text-slate-400 text-xs">Total Tabel Database</span>
+                      <div className="text-2xl font-black text-white">18 Tabel</div>
+                      <p className="text-[11px] text-amber-400">Tersinkronisasi & Terstruktur</p>
+                    </div>
+
+                    <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-1">
+                      <span className="text-slate-400 text-xs">Total Baris Data Aktif</span>
+                      <div className="text-2xl font-black text-amber-400">
+                        {GoogleSheetsService.getTableSummaries().reduce((acc, t) => acc + t.rowCount, 0)} Baris
+                      </div>
+                      <p className="text-[11px] text-slate-400">Semua Modul Kesiswaan</p>
+                    </div>
+
+                    <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-1">
+                      <span className="text-slate-400 text-xs">Backend Database</span>
+                      <div className="text-2xl font-black text-emerald-400">Google Sheets</div>
+                      <p className="text-[11px] text-slate-400">Apps Script Serverless REST API</p>
+                    </div>
+
+                    <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-1">
+                      <span className="text-slate-400 text-xs">Kompatibilitas Ekspor</span>
+                      <div className="text-2xl font-black text-white">SQL • JSON • CSV</div>
+                      <p className="text-[11px] text-emerald-400">Dukungan Multi-Format</p>
+                    </div>
+                  </div>
+
+                  {/* Filter & Search Bar */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div className="relative flex-1 max-w-md">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={tableSearchQuery}
+                        onChange={(e) => setTableSearchQuery(e.target.value)}
+                        placeholder="Cari tabel database (nama, label, deskripsi)..."
+                        className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                      />
+                      {tableSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setTableSearchQuery('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Category Filter Pills */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px]">
+                      {['Semua', 'Profil', 'Organisasi', 'Publikasi', 'Kegiatan', 'Prestasi', 'Dokumentasi', 'Interaksi', 'Keamanan'].map(cat => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setTableCategoryFilter(cat)}
+                          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer shrink-0 ${
+                            tableCategoryFilter === cat
+                              ? 'bg-amber-500 text-slate-950'
+                              : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 18 Database Tables Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {GoogleSheetsService.getTableSummaries()
+                      .filter(t => {
+                        const matchesCategory = tableCategoryFilter === 'Semua' || t.category === tableCategoryFilter;
+                        const q = tableSearchQuery.toLowerCase();
+                        const matchesSearch = !q || t.tableName.toLowerCase().includes(q) || t.label.toLowerCase().includes(q) || t.description.toLowerCase().includes(q);
+                        return matchesCategory && matchesSearch;
+                      })
+                      .map((table, idx) => (
+                        <div
+                          key={table.id}
+                          className="p-5 rounded-xl bg-slate-800/80 border border-slate-700 flex flex-col justify-between space-y-4 hover:border-amber-500/40 transition-all shadow-sm"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-[11px] font-bold text-amber-400 bg-amber-950/70 border border-amber-800/50 px-2 py-0.5 rounded">
+                                {table.tableName}
+                              </span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 bg-blue-950 px-2 py-0.5 rounded border border-blue-800/40">
+                                {table.category}
+                              </span>
+                            </div>
+
+                            <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                              <Table className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <span className="truncate">{table.label}</span>
+                            </h4>
+
+                            <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">
+                              {table.description}
+                            </p>
+
+                            <div className="flex items-center justify-between text-[11px] text-slate-300 pt-2 border-t border-slate-700/80">
+                              <span className="flex items-center gap-1">
+                                <strong className="text-white font-mono">{table.rowCount}</strong> baris data
+                              </span>
+                              <span className="flex items-center gap-1 text-slate-400">
+                                <strong className="text-slate-300 font-mono">{table.columnsCount}</strong> kolom skema
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-700/80 flex items-center justify-between gap-2 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewTable(table.tableName)}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 bg-slate-900 hover:bg-slate-700 text-slate-200 font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Pratinjau</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => GoogleSheetsService.exportTableToCsv(table.tableName)}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 bg-slate-900 hover:bg-slate-700 text-slate-200 font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer"
+                              title="Ekspor CSV untuk tabel ini"
+                            >
+                              <Download className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>CSV</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 2: PENGATURAN & WEB APP URL */}
+              {sheetsSubTab === 'config' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    {/* Settings Form */}
+                    <form onSubmit={handleSaveSheetsConfig} className="lg:col-span-7 bg-slate-800/80 border border-slate-700 rounded-xl p-6 space-y-5 text-xs text-slate-200">
+                      <div className="border-b border-slate-700 pb-3">
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <Settings className="w-4 h-4 text-amber-400" />
+                          <span>Konfigurasi Google Apps Script Web App Endpoint</span>
+                        </h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Tempelkan URL Web App hasil deploy dari Google Apps Script untuk menghubungkan frontend ke spreadsheet Google.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">
+                          URL Google Apps Script Web App (Wajib):
+                        </label>
+                        <div className="space-y-1">
+                          <input
+                            type="url"
+                            required
+                            value={webAppInput}
+                            onChange={(e) => setWebAppInput(e.target.value)}
+                            placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                          />
+                          <p className="text-[11px] text-slate-400">
+                            Pastikan URL berakhiran <code className="text-amber-300 bg-slate-950 px-1 py-0.5 rounded">/exec</code> dan izin akses disetel ke <strong>"Anyone" (Siapa saja)</strong>.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">
+                          Tautan Langsung Google Spreadsheet (Opsional):
+                        </label>
+                        <input
+                          type="url"
+                          value={spreadsheetUrlInput}
+                          onChange={(e) => setSpreadsheetUrlInput(e.target.value)}
+                          placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs.../edit"
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                        />
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          Tautan cepat untuk membuka lembar spreadsheet di tab browser baru.
+                        </p>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-700">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={autoSyncInput}
+                            onChange={(e) => setAutoSyncInput(e.target.checked)}
+                            className="mt-0.5 w-4 h-4 rounded text-amber-500 focus:ring-amber-400 bg-slate-900 border-slate-700"
+                          />
+                          <div>
+                            <span className="font-bold text-white block">Aktifkan Sinkronisasi Otomatis (Auto-Sync)</span>
+                            <span className="text-[11px] text-slate-400 leading-relaxed block">
+                              Secara otomatis mengirim data terbaru ke Google Sheets di latar belakang saat pengelola melakukan perubahan data (berita, agenda, profil, dokumen, dll).
+                            </span>
+                          </div>
+                        </label>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-700">
+                        <button
+                          type="button"
+                          onClick={handleTestConnection}
+                          disabled={isTestingConnection}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-slate-200 font-bold rounded-lg border border-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isTestingConnection ? 'animate-spin text-amber-400' : 'text-slate-400'}`} />
+                          <span>{isTestingConnection ? 'Menguji...' : 'Uji Koneksi URL'}</span>
+                        </button>
+
+                        <button
+                          type="submit"
+                          className="inline-flex items-center gap-1.5 px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>Simpan Pengaturan</span>
+                        </button>
+                      </div>
+
+                      {/* Test Connection Result Box */}
+                      {testResult && (
+                        <div className={`p-4 rounded-xl border text-xs space-y-1.5 ${
+                          testResult.success
+                            ? 'bg-emerald-950/60 border-emerald-700/60 text-emerald-200'
+                            : 'bg-red-950/60 border-red-700/60 text-red-200'
+                        }`}>
+                          <div className="flex items-center gap-2 font-bold">
+                            {testResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertCircle className="w-4 h-4 text-red-400" />}
+                            <span>{testResult.success ? 'Koneksi Berhasil!' : 'Koneksi Gagal'}</span>
+                          </div>
+                          <p className="text-[11px]">{testResult.message}</p>
+                          {testResult.details && (
+                            <pre className="text-[10px] bg-slate-950/80 p-2 rounded overflow-x-auto font-mono text-slate-300">
+                              {JSON.stringify(testResult.details, null, 2)}
+                            </pre>
+                          )}
+                        </div>
+                      )}
+                    </form>
+
+                    {/* Initialization & Guidelines Side Card */}
+                    <div className="lg:col-span-5 space-y-5">
+                      <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-5 space-y-4 text-xs">
+                        <div className="flex items-center gap-2 text-white font-bold">
+                          <Layers className="w-4 h-4 text-amber-400" />
+                          <span>Inisialisasi Lembar Spreadsheet</span>
+                        </div>
+                        <p className="text-slate-400 leading-relaxed text-[11px]">
+                          Fungsi ini akan secara otomatis membuat 18 sheet tabel pada spreadsheet Anda sekaligus menerapkan styling header Navy/Gold khas Kesiswaan SMESA.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleInitSpreadsheet}
+                          disabled={isSyncingSheets || !webAppInput}
+                          className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-lg border border-blue-700 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <FileSpreadsheet className="w-4 h-4 text-amber-400" />
+                          <span>Buat 18 Tabel di Spreadsheet Sekarang</span>
+                        </button>
+                      </div>
+
+                      <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-5 space-y-3 text-xs">
+                        <h4 className="font-bold text-white flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span>Checklist Deployment Apps Script</span>
+                        </h4>
+                        <ul className="space-y-2 text-[11px] text-slate-300">
+                          <li className="flex items-start gap-2">
+                            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                            <span>Jenis penerapan dipilih <strong>Aplikasi Web (Web App)</strong>.</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                            <span>Jalankan sebagai (*Execute as*): <strong>Saya (email akun Anda)</strong>.</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                            <span>Akses (*Who has access*): <strong>Siapa saja (Anyone)</strong>.</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                            <span>Izin akses Google diizinkan saat pertama kali deploy (*Review Permissions*).</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 3: KODE APPS SCRIPT (CODE.GS) & PANDUAN */}
+              {sheetsSubTab === 'script' && (
+                <div className="space-y-6">
+                  {/* Top Action Box */}
+                  <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Code2 className="w-4 h-4 text-amber-400" />
+                        <span>Source Code Google Apps Script (Code.gs)</span>
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Kode backend siap pakai untuk di-copy ke Google Apps Script Spreadsheet Anda.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleCopyGasScript}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                      >
+                        {copyScriptSuccess ? <Check className="w-4 h-4 text-emerald-900" /> : <Copy className="w-4 h-4" />}
+                        <span>{copyScriptSuccess ? 'Tersalin!' : 'Salin Seluruh Kode Code.gs'}</span>
+                      </button>
+
+                      <a
+                        href={`data:text/javascript;charset=utf-8,${encodeURIComponent(GOOGLE_APPS_SCRIPT_CODE)}`}
+                        download="Code.gs"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-lg border border-slate-700 transition-colors"
+                      >
+                        <Download className="w-4 h-4 text-amber-400" />
+                        <span>Unduh File</span>
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* 5 Langkah Panduan Lengkap */}
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
+                    <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2">
+                      <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center">1</span>
+                      <h5 className="font-bold text-white">Buat Spreadsheet</h5>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Buka <a href="https://sheets.new" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline">sheets.new</a> di Google Drive dan beri nama spreadsheet.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2">
+                      <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center">2</span>
+                      <h5 className="font-bold text-white">Buka Apps Script</h5>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Di menu atas Google Sheets, klik menu <strong>Ekstensi</strong> &rarr; pilih <strong>Apps Script</strong>.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2">
+                      <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center">3</span>
+                      <h5 className="font-bold text-white">Tempelkan Kode</h5>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Hapus kode default di file <code className="text-amber-300">Code.gs</code>, lalu tempelkan kode di bawah ini & Simpan.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2">
+                      <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center">4</span>
+                      <h5 className="font-bold text-white">Deploy Web App</h5>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Klik <strong>Terapkan</strong> &rarr; <strong>Penerapan baru</strong> &rarr; <strong>Aplikasi Web</strong>. Akses: <strong>Siapa saja</strong>.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2">
+                      <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center">5</span>
+                      <h5 className="font-bold text-white">Hubungkan ke CMS</h5>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Salin URL Web App dan tempelkan pada tab <strong>Pengaturan</strong> di Panel Admin ini.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Code Viewer */}
+                  <div className="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+                    <div className="bg-slate-900 px-4 py-2.5 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-red-500/80" />
+                        <span className="w-3 h-3 rounded-full bg-amber-500/80" />
+                        <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
+                        <span className="font-mono text-slate-300 ml-2">Code.gs (Backend Database Kesiswaan SMESA)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCopyGasScript}
+                        className="text-amber-400 hover:text-white flex items-center gap-1 font-bold cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Salin Kode</span>
+                      </button>
+                    </div>
+
+                    <pre className="p-4 text-xs font-mono text-slate-300 max-h-[500px] overflow-y-auto leading-relaxed select-all">
+                      {GOOGLE_APPS_SCRIPT_CODE}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
 
@@ -2946,6 +3942,130 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Table Data Preview Modal */}
+      {previewTable && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-slate-900 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col border border-slate-700 p-6 space-y-4 text-xs text-slate-200 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                  <Table className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white flex items-center gap-2">
+                    <span>Pratinjau Database:</span>
+                    <span className="font-mono text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800/40 text-xs">
+                      {previewTable}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Menampilkan data nyata dari penyimpanan sistem kesiswaan yang terhubung dengan Google Sheets.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => GoogleSheetsService.exportTableToCsv(previewTable)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg border border-slate-700 transition-colors cursor-pointer text-xs"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Unduh CSV</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewTable(null)}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Table Content */}
+            <div className="flex-1 overflow-auto border border-slate-800 rounded-xl bg-slate-950 max-h-[60vh]">
+              {(() => {
+                const allData = GoogleSheetsService.getAllDatabaseTablesData();
+                const rows = (allData as any)[previewTable] || [];
+
+                if (rows.length === 0) {
+                  return (
+                    <div className="p-8 text-center text-slate-400 space-y-2">
+                      <Table className="w-8 h-8 text-slate-600 mx-auto" />
+                      <p className="font-bold text-slate-300">Tabel Kosong</p>
+                      <p className="text-xs text-slate-500">Belum ada baris data yang tersimpan pada tabel ini.</p>
+                    </div>
+                  );
+                }
+
+                const columns = Object.keys(rows[0]);
+
+                return (
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-[10px] uppercase font-bold text-amber-400 z-10">
+                      <tr>
+                        <th className="p-3 w-10 text-center text-slate-500 border-r border-slate-800">#</th>
+                        {columns.map(col => (
+                          <th key={col} className="p-3 whitespace-nowrap font-mono tracking-wider border-r border-slate-800/60 last:border-r-0">
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {rows.map((row: any, rIdx: number) => (
+                        <tr key={row.id || rIdx} className="hover:bg-slate-900/60 transition-colors">
+                          <td className="p-3 text-center text-slate-500 font-mono text-[10px] border-r border-slate-800">
+                            {rIdx + 1}
+                          </td>
+                          {columns.map(col => {
+                            let val = row[col];
+                            let isObj = typeof val === 'object' && val !== null;
+                            let displayVal = isObj ? JSON.stringify(val) : String(val ?? '');
+
+                            return (
+                              <td
+                                key={col}
+                                className="p-3 max-w-xs truncate border-r border-slate-800/60 last:border-r-0 text-slate-300 font-mono text-[11px]"
+                                title={displayVal}
+                              >
+                                {isObj ? (
+                                  <span className="text-amber-300 bg-amber-950/60 px-1 py-0.5 rounded text-[10px]">
+                                    {Array.isArray(val) ? `[${val.length} item]` : '{object}'}
+                                  </span>
+                                ) : (
+                                  <span className={col === 'id' ? 'font-bold text-white' : ''}>
+                                    {displayVal || <em className="text-slate-600">null</em>}
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+              <span>
+                Total baris: <strong>{((GoogleSheetsService.getAllDatabaseTablesData() as any)[previewTable] || []).length}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewTable(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg cursor-pointer"
+              >
+                Tutup Pratinjau
+              </button>
+            </div>
           </div>
         </div>
       )}

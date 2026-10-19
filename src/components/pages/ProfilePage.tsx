@@ -20,7 +20,8 @@ import {
   Sparkles,
   Lock,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  Building2
 } from 'lucide-react';
 import { 
   SchoolProfileData, 
@@ -36,6 +37,7 @@ interface ProfilePageProps {
   onNavigate: (tab: string) => void;
   currentAdmin?: AdminUser | null;
   onOpenLoginModal?: () => void;
+  onOpenAdminPanel?: () => void;
   onDataChanged?: () => void;
 }
 
@@ -44,6 +46,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onNavigate,
   currentAdmin,
   onOpenLoginModal,
+  onOpenAdminPanel,
   onDataChanged
 }) => {
   const [downloadNotification, setDownloadNotification] = useState<string | null>(null);
@@ -253,103 +256,34 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 text-white py-14 sm:py-20 border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-950/60 border border-amber-500/30 px-3 py-1 rounded">
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-950/60 border border-amber-500/30 px-3 py-1.5 rounded-lg shadow-xs">
               <Shield className="w-3.5 h-3.5" />
               <span>Profil Resmi Kesiswaan</span>
             </div>
 
-            {/* Quick Management Badge / Login Trigger (Selector 1 Target) */}
+            {/* Admin Management Status Indicator */}
             {currentAdmin ? (
-              <div className="flex flex-wrap items-center gap-2 bg-slate-900/90 border border-emerald-500/40 p-2 sm:px-3 sm:py-2 rounded-xl shadow-lg backdrop-blur-md">
-                <div className="flex items-center gap-2 pr-2 border-r border-slate-700">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                  </span>
-                  <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <div className="leading-tight">
-                    <span className="font-extrabold text-white text-xs block truncate max-w-[150px]">{currentAdmin.name}</span>
-                    <span className="text-[10px] text-amber-400 font-semibold">{currentAdmin.role}</span>
-                  </div>
+              <div className="flex items-center gap-2.5 bg-slate-900/90 border border-emerald-500/40 px-3 py-1.5 rounded-xl shadow-lg backdrop-blur-md">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                <div className="leading-tight mr-1">
+                  <span className="font-extrabold text-white text-xs block truncate max-w-[140px]">{currentAdmin.name}</span>
+                  <span className="text-[10px] text-amber-400 font-semibold">{currentAdmin.role}</span>
                 </div>
-
-                {/* Direct quick action buttons for Administrator to edit 4 profile pillars */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button
-                    onClick={openProfileEditModal}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-2 py-1 rounded-md transition-colors cursor-pointer"
-                    title="Ubah Gambaran Umum & Peran Kesiswaan"
-                  >
-                    <Edit3 className="w-3 h-3 text-amber-400" />
-                    <span>Gambaran & Peran</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setEditingProgram({
-                        title: '',
-                        category: 'Program Kerja Kesiswaan',
-                        period: 'Tahun 2026/2027',
-                        target: 'Siswa SMESA',
-                        description: '',
-                        status: 'terencana'
-                      });
-                      setShowProgramModal(true);
-                    }}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold bg-blue-900/40 hover:bg-blue-900/60 text-blue-200 border border-blue-700/50 px-2 py-1 rounded-md transition-colors cursor-pointer"
-                    title="Tambah / Ubah Agenda & Program Kerja"
-                  >
-                    <Plus className="w-3 h-3 text-amber-400" />
-                    <span>+ Agenda/Proker</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setEditingStaff({
-                        title: 'Staf Kesiswaan',
-                        name: '',
-                        role: '',
-                        desc: '',
-                        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop'
-                      });
-                      setShowStaffModal(true);
-                    }}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1 rounded-md transition-colors cursor-pointer"
-                    title="Tambah / Ubah Struktur Organisasi"
-                  >
-                    <Plus className="w-3 h-3 text-amber-400" />
-                    <span>+ Struktur</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setEditingDoc({
-                        title: '',
-                        category: 'Dokumen Kesiswaan',
-                        format: 'PDF',
-                        size: '1.5 MB',
-                        updated: 'Oktober 2026',
-                        url: '#'
-                      });
-                      setShowDocModal(true);
-                    }}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1 rounded-md transition-colors cursor-pointer"
-                    title="Tambah / Ubah Unduhan Dokumen"
-                  >
-                    <Plus className="w-3 h-3 text-amber-400" />
-                    <span>+ Dokumen</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => onOpenAdminPanel ? onOpenAdminPanel() : (onOpenLoginModal && onOpenLoginModal())}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-sm ml-1"
+                  title="Buka Pengelolaan Profil Kesiswaan di Panel Admin"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Buka Panel Admin</span>
+                </button>
               </div>
-            ) : (
-              <button
-                onClick={() => onOpenLoginModal && onOpenLoginModal()}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-950 to-slate-900 hover:from-slate-900 hover:to-blue-950 text-amber-300 hover:text-white text-xs font-bold px-4 py-2 rounded-xl border border-amber-400/40 shadow-md transition-all cursor-pointer active:scale-95"
-              >
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Login Administrator untuk Ubah Konten</span>
-              </button>
-            )}
+            ) : null}
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
@@ -359,70 +293,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           <p className="text-slate-300 text-sm sm:text-base max-w-3xl leading-relaxed">
             Unit pengelola pembinaan karakter, penegakan kedisiplinan, pengembangan potensi minat bakat, organisasi peserta didik, dan pendampingan prestasi SMESA.
           </p>
-
-          {/* Action Management Toolbar for Logged In Managers */}
-          <div className="pt-2 flex flex-wrap items-center gap-2">
-            <button
-              onClick={openProfileEditModal}
-              className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm transition-colors cursor-pointer"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Profil & Visi Misi</span>
-            </button>
-
-            <button
-              onClick={() => requireAuth(() => {
-                setEditingProgram({
-                  title: '',
-                  category: 'Program Kerja Kesiswaan',
-                  period: 'Tahun 2026/2027',
-                  target: 'Siswa SMESA',
-                  description: '',
-                  status: 'terencana'
-                });
-                setShowProgramModal(true);
-              })}
-              className="inline-flex items-center gap-1.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm transition-colors cursor-pointer border border-blue-700"
-            >
-              <Plus className="w-3.5 h-3.5 text-amber-400" />
-              <span>Tambah Program Kerja</span>
-            </button>
-
-            <button
-              onClick={() => requireAuth(() => {
-                setEditingStaff({
-                  title: 'Staf Kesiswaan',
-                  name: '',
-                  role: '',
-                  desc: '',
-                  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop'
-                });
-                setShowStaffModal(true);
-              })}
-              className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm transition-colors cursor-pointer border border-slate-700"
-            >
-              <Plus className="w-3.5 h-3.5 text-amber-400" />
-              <span>Tambah Anggota Struktur</span>
-            </button>
-
-            <button
-              onClick={() => requireAuth(() => {
-                setEditingDoc({
-                  title: '',
-                  category: 'Dokumen Kesiswaan',
-                  format: 'PDF',
-                  size: '1.2 MB',
-                  updated: 'Oktober 2026',
-                  url: '#'
-                });
-                setShowDocModal(true);
-              })}
-              className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm transition-colors cursor-pointer border border-slate-700"
-            >
-              <Plus className="w-3.5 h-3.5 text-amber-400" />
-              <span>Tambah Dokumen Unduhan</span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -430,42 +300,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         {/* Gambaran Umum & Peran Fungsi */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-sm relative">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">
-                  Tentang Kami
-                </span>
-                <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                  Gambaran Umum & Peran Kesiswaan
-                </h2>
-              </div>
-
-              <button
-                onClick={() => requireAuth(() => {
-                  setProfileEditForm({
-                    wakaName: profile.wakaName,
-                    wakaTitle: profile.wakaTitle,
-                    wakaGreeting: profile.wakaGreeting,
-                    wakaPhoto: profile.wakaPhoto,
-                    vision: profile.vision,
-                    overview: profile.overview || 'Bidang Kesiswaan SMK Negeri 1 Jember merupakan unit kerja strategis di bawah kepemimpinan Kepala Sekolah yang secara khusus bertugas merancang, mengawal, dan mengevaluasi seluruh kebijakan pembinaan peserta didik selama menempuh pendidikan di SMESA.',
-                    rolesText: (profile.rolesAndFunctions && profile.rolesAndFunctions.length > 0 ? profile.rolesAndFunctions : [
-                      'Pembinaan Karakter & Budi Pekerti: Menerapkan pembiasaan 5S, kedisiplinan berkeadilan, dan nilai Profil Pelajar Pancasila.',
-                      'Pengawalan Organisasi Siswa: Membina kemandirian fungsionaris OSIS, MPK, dan kepanitiaan kegiatan siswa.',
-                      'Pengembangan 22 Ekstrakurikuler: Memfasilitasi sarana latihan, regenerasi anggota, dan kompetisi unjuk karya.',
-                      'Akselerasi Prestasi Lomba (SMESA JUARA): Membina kontingen kompetisi kejuruan LKS, O2SN, FLS2N, hingga level nasional.',
-                      'Perlindungan Siswa & Lingkungan Aman: Mencegah tindak kekerasan, perundungan siber, dan menciptakan rasa aman inklusif.'
-                    ]).join('\n'),
-                    missionsText: profile.missions.join('\n'),
-                    disciplinePointsText: profile.disciplineCulture.points.join('\n')
-                  });
-                  setShowProfileEditModal(true);
-                })}
-                className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300/70 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Edit Gambaran & Peran</span>
-              </button>
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">
+                Tentang Kami
+              </span>
+              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Gambaran Umum & Peran Kesiswaan
+              </h2>
             </div>
 
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
@@ -495,24 +336,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
           {/* Visi dan Misi */}
           <div className="lg:col-span-5 bg-blue-950 text-white rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl border border-blue-900 relative">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Target className="w-4 h-4" />
-                  <span>Arah Kebijakan</span>
-                </span>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-                  Visi & Misi Kesiswaan
-                </h2>
-              </div>
-
-              <button
-                onClick={openProfileEditModal}
-                className="inline-flex items-center gap-1 text-xs font-bold text-amber-300 bg-white/10 hover:bg-white/20 border border-amber-400/40 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
-              >
-                <Edit3 className="w-3.5 h-3.5 text-amber-400" />
-                <span>Edit Visi</span>
-              </button>
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Target className="w-4 h-4" />
+                <span>Arah Kebijakan</span>
+              </span>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                Visi & Misi Kesiswaan
+              </h2>
             </div>
 
             <div className="bg-slate-900/80 p-4 rounded-xl border border-blue-900/60 space-y-2">
@@ -540,39 +371,19 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </section>
 
-        {/* SECTION: PROGRAM KERJA TAHUNAN KESISWAAN (TAMBAH & EDIT) */}
+        {/* SECTION: PROGRAM KERJA TAHUNAN KESISWAAN */}
         <section className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-10 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-900">
-                <Calendar className="w-4 h-4 text-amber-500" />
-                <span>Program Kerja Tahunan</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Agenda & Program Kerja Bidang Kesiswaan
-              </h2>
-              <p className="text-xs text-slate-500">
-                Program strategis tahunan pembinaan karakter, masa pengenalan, pemusatan lomba, dan gelar kreasi pelajar.
-              </p>
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-900">
+              <Calendar className="w-4 h-4 text-amber-500" />
+              <span>Program Kerja Tahunan</span>
             </div>
-
-            <button
-              onClick={() => requireAuth(() => {
-                setEditingProgram({
-                  title: '',
-                  category: 'Program Kerja Kesiswaan',
-                  period: 'Tahun 2026/2027',
-                  target: 'Siswa SMESA',
-                  description: '',
-                  status: 'terencana'
-                });
-                setShowProgramModal(true);
-              })}
-              className="inline-flex items-center gap-1.5 bg-blue-950 hover:bg-slate-900 text-amber-400 text-xs font-bold px-4 py-2.5 rounded-lg shadow-sm transition-colors shrink-0 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Program Kerja</span>
-            </button>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Agenda & Program Kerja Bidang Kesiswaan
+            </h2>
+            <p className="text-xs text-slate-500">
+              Program strategis tahunan pembinaan karakter, masa pengenalan, pemusatan lomba, dan gelar kreasi pelajar.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
@@ -608,26 +419,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                     <span className="block font-semibold text-slate-700">{prog.period}</span>
                     <span className="text-[10px] text-slate-500">Target: {prog.target}</span>
                   </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => requireAuth(() => {
-                        setEditingProgram(prog);
-                        setShowProgramModal(true);
-                      })}
-                      className="p-1.5 text-blue-900 hover:bg-blue-50 rounded-md transition-colors cursor-pointer"
-                      title="Edit Program Kerja"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => requireAuth(() => handleDeleteProgram(prog.id))}
-                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                      title="Hapus Program Kerja"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <span className="text-[10px] font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    Resmi Kesiswaan
+                  </span>
                 </div>
               </div>
             ))}
@@ -698,35 +492,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
         {/* Struktur Organisasi Kesiswaan */}
         <section className="space-y-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
-                Pengelola Kesiswaan
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Struktur Organisasi Kesiswaan
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500">
-                Susunan tim pembina kesiswaan yang senantiasa mendampingi perjalanan akademik dan kepribadian peserta didik di SMK Negeri 1 Jember.
-              </p>
-            </div>
-
-            <button
-              onClick={() => requireAuth(() => {
-                setEditingStaff({
-                  title: 'Staf Kesiswaan',
-                  name: '',
-                  role: '',
-                  desc: '',
-                  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop'
-                });
-                setShowStaffModal(true);
-              })}
-              className="inline-flex items-center gap-1.5 bg-blue-950 hover:bg-slate-900 text-amber-400 text-xs font-bold px-4 py-2.5 rounded-lg shadow-sm transition-colors shrink-0 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Anggota Struktur</span>
-            </button>
+          <div className="space-y-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
+              Pengelola Kesiswaan
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Struktur Organisasi Kesiswaan
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Susunan tim pembina kesiswaan yang senantiasa mendampingi perjalanan akademik dan kepribadian peserta didik di SMK Negeri 1 Jember.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -758,25 +533,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   </p>
                 </div>
 
-                <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                  <button
-                    onClick={() => requireAuth(() => {
-                      setEditingStaff(staff);
-                      setShowStaffModal(true);
-                    })}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-900 hover:underline cursor-pointer"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                    <span>Edit</span>
-                  </button>
-                  <span className="text-slate-300">·</span>
-                  <button
-                    onClick={() => requireAuth(() => handleDeleteStaff(staff.id))}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 hover:underline cursor-pointer"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    <span>Hapus</span>
-                  </button>
+                <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                  <span className="text-[10px] text-slate-400">Tim Kesiswaan SMESA</span>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded">
+                    Fungsionaris
+                  </span>
                 </div>
               </div>
             ))}
@@ -785,37 +546,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
         {/* Unduhan Dokumen Publik */}
         <section className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-10 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-900">
-                <FileText className="w-4 h-4 text-amber-500" />
-                <span>Transparansi Publik</span>
-              </div>
-              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                Unduhan Dokumen Resmi Kesiswaan
-              </h2>
-              <p className="text-xs text-slate-500">
-                Dokumen tata tertib, formulir dispensasi lomba resmi, dan pedoman organisasi untuk siswa dan wali murid.
-              </p>
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-900">
+              <FileText className="w-4 h-4 text-amber-500" />
+              <span>Transparansi Publik</span>
             </div>
-
-            <button
-              onClick={() => requireAuth(() => {
-                setEditingDoc({
-                  title: '',
-                  category: 'Dokumen Kesiswaan',
-                  format: 'PDF',
-                  size: '1.5 MB',
-                  updated: 'Oktober 2026',
-                  url: '#'
-                });
-                setShowDocModal(true);
-              })}
-              className="inline-flex items-center gap-1.5 bg-blue-950 hover:bg-slate-900 text-amber-400 text-xs font-bold px-4 py-2.5 rounded-lg shadow-sm transition-colors shrink-0 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Dokumen Baru</span>
-            </button>
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              Unduhan Dokumen Resmi Kesiswaan
+            </h2>
+            <p className="text-xs text-slate-500">
+              Dokumen tata tertib, formulir dispensasi lomba resmi, dan pedoman organisasi untuk siswa dan wali murid.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -851,25 +592,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   >
                     <Download className="w-3.5 h-3.5 text-amber-600" />
                     <span className="hidden sm:inline">Unduh</span>
-                  </button>
-
-                  <button
-                    onClick={() => requireAuth(() => {
-                      setEditingDoc(doc);
-                      setShowDocModal(true);
-                    })}
-                    className="p-2 text-slate-500 hover:text-blue-950 hover:bg-slate-200/70 rounded-lg transition-colors cursor-pointer"
-                    title="Edit Dokumen"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    onClick={() => requireAuth(() => handleDeleteDoc(doc.id))}
-                    className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                    title="Hapus Dokumen"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>

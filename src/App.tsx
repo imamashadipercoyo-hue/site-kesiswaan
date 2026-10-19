@@ -176,6 +176,7 @@ export default function App() {
             onNavigate={handleNavigate}
             currentAdmin={currentAdmin}
             onOpenLoginModal={() => setShowAdminLoginModal(true)}
+            onOpenAdminPanel={() => setShowAdminPanel(true)}
             onDataChanged={refreshData}
           />
         )}
